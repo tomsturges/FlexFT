@@ -2,6 +2,7 @@ from .core import (
     CenteredFRDFT,
     CenteredDFT,
     FRDFT,
+    frdft,
     FlexFT,
     flexft,
     IFlexFT,
@@ -9,13 +10,14 @@ from .core import (
     FlexFT2D,
     flexft2d,
     IFlexFT2D,
-    iflexft2d
+    iflexft2d,
 )
 
 __all__ = [
     "CenteredDFT",
     "CenteredFRDFT",
     "FRDFT",
+    "frdft",
     "FlexFT",
     "flexft",
     "IFlexFT",
