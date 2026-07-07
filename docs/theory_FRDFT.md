@@ -46,7 +46,7 @@ n & 0 & 1 & 2 & 3 & 4 & 5 & 6 & 7 \\
 \end{array}
 $$
 
-Those with a keen eye may notice that the value $z_4$ will never actually multiply anything non-zero, so it seems like we have make the arrays 1 element longer than needed, namely a length of $2N$ rather than a possible $2N-1$. This is intentional, because if the original length $N$ is a power of 2 (the fastest length for an FFT) than the length $2N$ is also a power of 2. To make this discussion more formal, let us now define the arrays
+Those with a keen eye may notice that the value $z_4$ will never actually multiply anything non-zero, so it seems that we have made the arrays one element longer than needed: a length of $2N$ rather than the possible $2N-1$. This is intentional because, if the original length $N$ is a power of 2 (the fastest length for an FFT), then the length $2N$ is also a power of 2. To make this discussion more formal, let us now define the arrays
 
 $$
 \begin{align}
@@ -80,4 +80,4 @@ where the array indexing is modulo the array length $2N$. This is a circular con
     \end{equation}
     $$
 
-where element-wise multiplication is implied. Notice we have reintroduced the explicit dependence on the fractionality paramter $\alpha$. We must remember that the parameter $\theta_n$ within $\v{Y}_\alpha$ and $\v{Z}_\alpha$ depends on $\alpha$ also. We emphasise that this expression is exactly the same as the original stated fractional-DFT for the first $N$ values. The rest are discarded.
+where element-wise multiplication is implied. Notice that we have reintroduced the explicit dependence on the fractionality parameter $\alpha$. We must remember that the parameter $\theta_n$ within $\v{Y}_\alpha$ and $\v{Z}_\alpha$ also depends on $\alpha$. We emphasise that this expression is exactly the same as the original stated fractional-DFT for the first $N$ values. The rest are discarded.

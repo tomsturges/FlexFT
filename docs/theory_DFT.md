@@ -6,11 +6,11 @@ Given a function $f(x)$ that is negligible outside the interval $(-L_x/2, L_x/2)
 
 ## The DFT is not an approximation to the CFT and does not allow independent sampling grids
 
-The [discrete Fourier transform](https://en.wikipedia.org/wiki/Discrete_Fourier_transform) (DFT) and (mathematically) equivalently the [fast Fourier transform](https://en.wikipedia.org/wiki/Fast_Fourier_transform) (FFT) are **not** approximations to the CFT. This is an important, alebit possibly pedantic point. Indeed, a suitably scaled and shifted DFT **can** be used to evaluate a finite-sum approximation to the CFT. However, the input and output sampling grids are intrinsically coupled and cannot be chosen independently. Overcoming this limitation is the motivation for the alternative approach used in this package.
+The [discrete Fourier transform](https://en.wikipedia.org/wiki/Discrete_Fourier_transform) (DFT) and (mathematically) equivalently the [fast Fourier transform](https://en.wikipedia.org/wiki/Fast_Fourier_transform) (FFT) are **not** approximations to the CFT. This is an important, albeit possibly pedantic point. Indeed, a suitably scaled and shifted DFT **can** be used to evaluate a finite-sum approximation to the CFT. However, the input and output sampling grids are intrinsically coupled and cannot be chosen independently. Overcoming this limitation is the motivation for the alternative approach used in this package.
 
 ## Approximating the CFT with the DFT
 
-In the following we derive an approximation to the CFT that uses a single suitably scaled and shifted DFT. In doing so, we will explicilty see how the spacing of the output samples are fixed by the spacing of the input samples.
+In the following we derive an approximation to the CFT that uses a single suitably scaled and shifted DFT. In doing so, we will explicitly see how the spacing of the output samples is fixed by the spacing of the input samples.
 
 A CFT involves an infinite continuous integral. We assume the function $f(x)$ is negligible outside the interval $(-L_x/2, L_x/2)$. Therefore the first approximation amounts to the truncation
 
@@ -36,7 +36,7 @@ $$
 \end{align}
 $$
 
-where $\v{f} = f(\v{x})$ (or equivalently $\v{f}[n]=f(\v{x}[n])$). Note that we call the vector of samples of the *exact* CFT as $\v{F}$, and the vector of samples of the approximation as $\tilde{\v{F}}$. The next step is where the intrinsic link between the input and output grids becomes aparent in the DFT approach. By fixing the output spacing $\delta_k$ to be the reciprocal of the input sample length $\delta_k \equiv 1 / L_x$ (or equivalently $\delta_k = 1 / (N \delta_x)$) then we have
+where $\v{f} = f(\v{x})$ (or equivalently $\v{f}[n]=f(\v{x}[n])$). Note that we call the vector of samples of the *exact* CFT as $\v{F}$, and the vector of samples of the approximation as $\tilde{\v{F}}$. The next step is where the intrinsic link between the input and output grids becomes apparent in the DFT approach. By fixing the output spacing $\delta_k$ to be the reciprocal of the input sample length $\delta_k \equiv 1 / L_x$ (or equivalently $\delta_k = 1 / (N \delta_x)$) then we have
 
 $$
 \begin{align}
@@ -102,7 +102,7 @@ $$
 \end{equation}
 $$
 
-In many programming langagues an operator (and its inverse) are defined to shift the zero-frequency component of a DFT to the centre of the vector. They are defined as
+In many programming languages an operator (and its inverse) is defined to shift the zero-frequency component of a DFT to the centre of the vector. They are defined as
 
 $$
 \begin{align}

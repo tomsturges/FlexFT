@@ -15,7 +15,7 @@ $$
 \end{equation}
 $$
 
-where $\v{F} = F(\v{k})$ is the vector of samles of the *exact* CFT, and $\tilde{\v{F}}$ is the approximation. Now the difference to the DFT approach enters. To use a single DFT to approximate the CFT one *must* fix the grid spacing in reciprocal space to be the reciprocal of the input sample length, i.e. $\delta_k = 1 / L_x$. However, we want the freedom to choose the output sampling freely. Therefore we leave $\delta_k$ as a free parameter. Substituting $\v{k}$ and $\v{x}$ into equation \eqref{eqn:start} gives
+where $\v{F} = F(\v{k})$ is the vector of samples of the *exact* CFT, and $\tilde{\v{F}}$ is the approximation. Now the difference to the DFT approach enters. To use a single DFT to approximate the CFT one *must* fix the grid spacing in reciprocal space to be the reciprocal of the input sample length, i.e. $\delta_k = 1 / L_x$. However, we want the freedom to choose the output sampling freely. Therefore we leave $\delta_k$ as a free parameter. Substituting $\v{k}$ and $\v{x}$ into equation \eqref{eqn:start} gives
 
 $$
 \begin{equation}
