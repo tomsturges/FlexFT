@@ -20,6 +20,7 @@ nav:
     - The fractional-DFT: theory_FRDFT.md
     - Approximating continuous FT with DFT: theory_DFT.md
     - Approximating continuous FT with fractional-DFT: theory_BST.md
+    - Shifted grids: shifted_grids.md
   - Examples: examples.md
   - API Reference: api.md
 
