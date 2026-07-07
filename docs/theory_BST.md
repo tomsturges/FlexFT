@@ -50,7 +50,7 @@ Using the definition of the fractional-DFT we can rewrite equation \eqref{eqn:pr
     $$
     \begin{equation}
     \label{eqn:final}
-    \tilde{\v{F}} = \delta_x \exp\big( i 2 \pi \delta (c \v{m} - c^2) \big) \text{frdft}\Big( \v{f} \cdot \exp( i 2 \pi \delta c \v{n}) \Big),
+    \tilde{\v{F}} = \delta_x \exp\big( i 2 \pi \delta (c \v{m} - c^2) \big) \text{frdft}_\delta \Big( \v{f} \cdot \exp( i 2 \pi \delta c \v{n}) \Big),
     \end{equation}
     $$
 
