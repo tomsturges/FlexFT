@@ -1,5 +1,5 @@
 [project]
-name = "bst"
+name = "flexft"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
@@ -14,6 +14,7 @@ dependencies = [
     "jupyter>=1.1.1",
     "jupyterlab>=4.5.6",
     "jupytext>=1.19.1",
+    "matplotlib>=3.10.6",
     "mkdocs-bibtex>=4.4.0",
     "nbstripout>=0.9.1",
 ]
@@ -22,7 +23,7 @@ dependencies = [
 dev = ["numpy>=1.26", "matplotlib>=3.7", "ipykernel>=6.29"]
 
 [project.scripts]
-bst = "bst:main"
+flexft = "flexft:main"
 
 [build-system]
 requires = ["hatchling"]

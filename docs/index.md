@@ -14,19 +14,15 @@ $$
 F(k) = \hat{\mathcal{F}}_x[f(x)](k) = \left. \int_{-\infty}^\infty f(x)\exp(-i 2\pi \xi x) \d x \right|_{\xi = k}.
 $$
 
-The function `bst` returns a vector $\tilde{\v{F}}$ which is an approximation to CFT at the chosen sample points 
+The function `flexft` returns a vector $\tilde{\v{F}}$ which is an approximation to CFT at the chosen sample points 
 
 $$
-\text{bst}(\v{x}, \v{k}, \v{f}) \equiv \tilde{\v{F}} \approx \v{F} \equiv F(\v{k}).
+\text{flexft}(\v{x}, \v{k}, \v{f}) \equiv \tilde{\v{F}} \approx \v{F} \equiv F(\v{k}).
 $$
 
 ## Implementation overview
 
-The function `bst` uses Bluestein's algorithm to rewrite the discretised approximation to the CFT as a linear convolution, which can then be evaluated as a circular convolution using FFTs. In the current implementation, this requires two forward FFTs and one inverse FFT, each acting on vectors of length $2N$, where $N$ is the number of input samples. This implementation is based on the article authored by D. H. Bailey and P. N. Swarztrauber [@BaileySwarztrauber1994]. Consequently, `bst` has the same computational complexity as an FFT, although with a larger constant prefactor. When the FFT of the convolution kernel is precomputed, each subsequent evaluation requires only one forward FFT and one inverse FFT of length $2N$, giving an asymptotic arithmetic cost of approximately four times that of an $N$-point FFT.
-
-## What does BST stand for?
-
-BST might stand for BlueStein Transform, Bailey-Swarztrauber Transform, or perhaps the Brilliant Sturges Transform.
+The function `flexft` uses Bluestein's algorithm to rewrite the discretised approximation to the CFT as a linear convolution, which can then be evaluated as a circular convolution using FFTs. In the current implementation, this requires two forward FFTs and one inverse FFT, each acting on vectors of length $2N$, where $N$ is the number of input samples. This implementation is based on the article authored by D. H. Bailey and P. N. Swarztrauber [@BaileySwarztrauber1994]. Consequently, `flexft` has the same computational complexity as an FFT, although with a larger constant prefactor. When the FFT of the convolution kernel is precomputed, each subsequent evaluation requires only one forward FFT and one inverse FFT of length $2N$, giving an asymptotic arithmetic cost of approximately four times that of an $N$-point FFT.
 
 ## References
 

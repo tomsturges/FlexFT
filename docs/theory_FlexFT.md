@@ -4,7 +4,7 @@ See the page [Conventions](conventions.md) for details on the notations used, th
 
 Given a function $f(x)$ that is negligible outside the interval $(-L_x/2, L_x/2)$, we want to compute a numerical approximation to its exact continuous Fourier transform (CFT). Importantly, we want to be able to choose the output grid $\v{k}$ in reciprocal space independently from the input grid $\v{x}$ in direct space. As we saw in the previous [theory page](theory_DFT.md) this is not possible with the DFT, which intrinsically links the input and output grids. In addition we would like the algorithm to be reasonably fast, with the same computational complexity as the FFT.
 
-## Approximating the CFT with the fractional-DFT
+## Approximating the CFT with the fractional DFT
 
 Our derivation begins exactly the same as [equation 1 from the DFT theory page](theory_DFT.md#eqn-truncation-and-riemann). That is, we define an input grid $\v{x}[n] = (n - c)\delta_x$ and an output grid $\v{k}[n] = (n - c)\delta_k$, where $c = \lfloor N / 2 \rfloor$ is the central index of the grids with length $N$. Truncating the integral within the CFT to $(-L_x/2, L_x/2)$ and replacing the integral with a Riemann sum allows us to approximate the CFT as
 

@@ -1,6 +1,6 @@
 
 
-The fractional-DFT was introduced by D. H. Bailey and P. N. Swarztrauber [@BaileySwarztrauber1991; @BaileySwarztrauber1994]. Our motivation for discussing the fractional-DFT becomes natural when following the derivation of the discretised approximation to the continuous Fourier transform (CFT) on the corresponding [theory page](theory_BST.md). Therefore, you may prefer to begin reading from that page. For an even more pedagogical introduction you could read the page on deriving an expression for the CFT in terms of a [normal DFT](theory_DFT.md).
+The fractional-DFT was introduced by D. H. Bailey and P. N. Swarztrauber [@BaileySwarztrauber1991; @BaileySwarztrauber1994]. Our motivation for discussing the fractional-DFT becomes natural when following the derivation of the discretised approximation to the continuous Fourier transform (CFT) on the corresponding [theory page](theory_FlexFT.md). Therefore, you may prefer to begin reading from that page. For an even more pedagogical introduction you could read the page on deriving an expression for the CFT in terms of a [normal DFT](theory_DFT.md).
 
 ## The fractional-DFT
 

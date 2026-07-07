@@ -106,7 +106,7 @@ class CenteredFRDFT:
     r"""
     Centered fractional discrete Fourier transform operator.
 
-    This wraps [`FRDFT`][bst.core.FRDFT] with the phase factors needed to
+    This wraps [`FRDFT`][flexft.core.FRDFT] with the phase factors needed to
     evaluate
 
     $$
@@ -164,7 +164,7 @@ def frdft(g, alpha):
     """
     return FRDFT(g.shape[-1], alpha)(g)
 
-class FLEXFT:
+class FlexFT:
     r"""
     Approximates the continuous Fourier transform
     
@@ -245,9 +245,9 @@ class FLEXFT:
 
 def flexft(f, *, dx, dk=None, x0=None, k0=None):
     r"""
-    One-shot wrapper around [`FLEXFT`][bst.core.FLEXFT].
+    One-shot wrapper around [`FlexFT`][flexft.core.FlexFT].
     """
-    return IFLEXFT(
+    return IFlexFT(
         N=f.shape[0],
         dx=dx,
         dk=dk,
@@ -255,7 +255,7 @@ def flexft(f, *, dx, dk=None, x0=None, k0=None):
         k0=k0,
     )(f)
 
-class IFLEXFT:
+class IFlexFT:
     r"""
     Approximate the inverse continuous Fourier transform on uniform grids.
 
@@ -294,7 +294,7 @@ class IFLEXFT:
         self.x0 = x0
         self.k0 = k0
 
-        self.forward_like = FLEXFT(
+        self.forward_like = FlexFT(
             N=self.N,
             dx=dk,
             dk=dx,
@@ -312,9 +312,9 @@ class IFLEXFT:
 
 def iflexft(F, *, dk, dx=None, x0=None, k0=None):
     r"""
-    One-shot wrapper around [`IFLEXFT`][bst.core.IFLEXFT].
+    One-shot wrapper around [`IFlexFT`][flexft.core.IFlexFT].
     """
-    return IFLEXFT(
+    return IFlexFT(
         N=F.shape[0],
         dk=dk,
         dx=dx,
@@ -330,7 +330,7 @@ def _pair(value, *, name):
     return value
 
 
-class FLEXFT2D:
+class FlexFT2D:
     r"""
     Approximate the 2D continuous Fourier transform on uniform tensor-product grids.
 
@@ -346,8 +346,8 @@ class FLEXFT2D:
 
         self.N = (int(N1), int(N2))
 
-        self.op1 = FLEXFT(N=N1, dx=dx1, dk=dk1, x0=x01, k0=k01)
-        self.op2 = FLEXFT(N=N2, dx=dx2, dk=dk2, x0=x02, k0=k02)
+        self.op1 = FlexFT(N=N1, dx=dx1, dk=dk1, x0=x01, k0=k01)
+        self.op2 = FlexFT(N=N2, dx=dx2, dk=dk2, x0=x02, k0=k02)
 
         self._op1_vm = jax.vmap(self.op1, in_axes=1, out_axes=1)
         self._op2_vm = jax.vmap(self.op2, in_axes=0, out_axes=0)
@@ -360,11 +360,11 @@ class FLEXFT2D:
 
 def flexft2d(f, *, dx, dk=None, x0=None, k0=None):
     r"""
-    One-shot wrapper around [`FLEXFT2D`][bst.core.FLEXFT2D].
+    One-shot wrapper around [`FlexFT2D`][flexft.core.FlexFT2D].
     """
-    return FLEXFT2D(N=f.shape[:2], dx=dx, dk=dk, x0=x0, k0=k0)(f)
+    return FlexFT2D(N=f.shape[:2], dx=dx, dk=dk, x0=x0, k0=k0)(f)
 
-class IFLEXFT2D:
+class IFlexFT2D:
     r"""
     Approximate the inverse 2D continuous Fourier transform on uniform grids.
     """
@@ -384,7 +384,7 @@ class IFLEXFT2D:
 
         self.N = (int(N1), int(N2))
 
-        self.forward_like = FLEXFT2D(
+        self.forward_like = FlexFT2D(
             N=self.N,
             dx=(dk1, dk2),
             dk=(dx1, dx2),
@@ -400,6 +400,6 @@ class IFLEXFT2D:
 
 def iflexft2d(F, *, dx, dk=None, x0=None, k0=None):
     r"""
-    One-shot wrapper around [`IFLEXFT2D`][bst.core.IFLEXFT2D].
+    One-shot wrapper around [`IFlexFT2D`][flexft.core.IFlexFT2D].
     """
-    return IFLEXFT2D(N=F.shape[:2], dx=dx, dk=dk, x0=x0, k0=k0)(F)
+    return IFlexFT2D(N=F.shape[:2], dx=dx, dk=dk, x0=x0, k0=k0)(F)

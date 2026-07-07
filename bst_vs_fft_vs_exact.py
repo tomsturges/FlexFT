@@ -35,7 +35,7 @@ Array1D = Num[Array, "x1"]
 # %% [markdown]
 # ### Interactive comparison of 1D continuous Fourier transform approximations
 #
-# The following cell creats an interactive widget that can be used to compare the BST vs FFT vs the exact anlytical continuous Fourier transform
+# The following cell creats an interactive widget that can be used to compare the FlexFT vs FFT vs the exact anlytical continuous Fourier transform
 
 # %%
 import numpy as np
@@ -44,7 +44,7 @@ import jax.numpy as jnp
 import matplotlib.pyplot as plt
 import ipywidgets as widgets
 from IPython.display import display
-from bst.bst import generate_bst, ibst
+from flexft.flexft import generate_bst, ibst
 
 jax.config.update("jax_enable_x64", True)
 
@@ -106,7 +106,7 @@ def plot_bst(func_name, direction, N, L_input, L_bst, L_exact):
         bst_x, bst_y = nu_bst,   np.abs(G_bst)
 
         xlabel_out, ylabel_out = "ν",  "|F(ν)|"
-        fft_label, bst_label   = "FFT", "BST"
+        fft_label, bst_label   = "FFT", "FlexFT"
 
     else:
         x_bst     = np.linspace(-L_bst, L_bst, N, endpoint=False)

@@ -1,4 +1,4 @@
-site_name: BST
+site_name: FlexFT
 site_description: Bailey-Swarztrauber transform utilities for approximating continuous Fourier transforms
 site_author: Thomas J. Sturges
 
@@ -19,7 +19,7 @@ nav:
     - Conventions: conventions.md
     - The fractional-DFT: theory_FRDFT.md
     - Approximating continuous FT with DFT: theory_DFT.md
-    - Approximating continuous FT with fractional-DFT: theory_BST.md
+    - Approximating continuous FT with fractional-DFT: theory_FlexFT.md
     - Shifted grids: shifted_grids.md
   - Examples: examples.md
   - API Reference: api.md
