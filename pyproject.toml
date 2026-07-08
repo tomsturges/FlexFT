@@ -4,11 +4,35 @@ version = "0.1.0"
 description = "Flexible-grid approximations to continuous Fourier transforms"
 readme = "README.md"
 authors = [{ name = "Thomas", email = "thomas.sturges@kit.edu" }]
+license = "MIT"
+keywords = [
+    "bluestein",
+    "continuous-fourier-transform",
+    "fft",
+    "fourier-transform",
+    "jax",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Mathematics",
+]
 requires-python = ">=3.10"
 dependencies = [
     "jax>=0.4.28",
     "numpy>=1.26",
 ]
+
+[project.urls]
+Homepage = "https://github.com/tomsturges/FlexFT"
+Repository = "https://github.com/tomsturges/FlexFT"
+Issues = "https://github.com/tomsturges/FlexFT/issues"
 
 [project.optional-dependencies]
 dev = [
