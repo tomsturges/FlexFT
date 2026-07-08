@@ -1,21 +1,114 @@
-import numpy as np
-import matplotlib.pyplot as plt
-import jax.numpy as jnp
+"""Core one- and two-dimensional FlexFT operators."""
+
+from __future__ import annotations
+
+import math
+from numbers import Integral
+from typing import Any
+
 import jax
-from jaxtyping import Float, Int, Array, Complex, Num
-from jax.numpy.fft import fft, ifft
-Float2D = Float[Array, "x1 x2"]
-Complex1D = Complex[Array, "x1"]
-Complex2D = Complex[Array, "x1 x2"]
-Real1D = Float[Array, "x1"] | Int[Array, "x1"]
-pi = jnp.pi
-exp = jnp.exp
-from typing import NamedTuple
-from jax.numpy.fft import fft, fftshift, ifftshift
+import jax.numpy as jnp
+import numpy as np
+from jax.numpy.fft import fft, fftshift, ifft, ifftshift
+
+
+def _validate_positive_int(value: Any, *, name: str = "N") -> int:
+    """Return a positive integer."""
+    if isinstance(value, bool) or not isinstance(value, Integral):
+        raise TypeError(f"{name} must be a positive integer, got {value!r}.")
+
+    result = int(value)
+    if result <= 0:
+        raise ValueError(f"{name} must be positive, got {result}.")
+    return result
+
+
+def _validate_finite_scalar(value: Any, *, name: str) -> float:
+    """Return a finite scalar as a Python float."""
+    if isinstance(value, (bool, np.bool_)):
+        raise TypeError(f"{name} must be a finite real scalar, got {value!r}.")
+
+    try:
+        result = float(value)
+    except (TypeError, ValueError) as exc:
+        raise TypeError(f"{name} must be a finite real scalar, got {value!r}.") from exc
+
+    if not math.isfinite(result):
+        raise ValueError(f"{name} must be finite, got {value!r}.")
+    return result
+
+
+def _validate_spacing(value: Any, *, name: str) -> float:
+    """Return a finite, strictly positive grid spacing."""
+    result = _validate_finite_scalar(value, name=name)
+    if result <= 0:
+        raise ValueError(f"{name} must be positive, got {result}.")
+    return result
+
+
+def _complex_dtype():
+    """Use the precision selected by the user's JAX configuration."""
+    return jnp.complex128 if jax.config.x64_enabled else jnp.complex64
+
+
+def _unit_phase(cycles: Any):
+    """Evaluate exp(i 2 pi cycles) accurately before conversion to JAX.
+
+    Phase arrays are plan constants, so constructing them in NumPy float64 avoids
+    int32 overflow and the large-argument loss of precision that otherwise occurs
+    under JAX's default 32-bit configuration. Reducing modulo one also keeps the
+    exponential's argument small.
+    """
+    cycles64 = np.asarray(cycles, dtype=np.float64)
+    if not np.all(np.isfinite(cycles64)):
+        raise ValueError("Phase values must be finite.")
+    reduced = np.remainder(cycles64, 1.0)
+    values = np.exp(2j * np.pi * reduced)
+    return jnp.asarray(values, dtype=_complex_dtype())
+
+
+def _as_vector(value: Any, *, length: int, name: str):
+    array = jnp.asarray(value)
+    if array.ndim != 1 or array.shape[0] != length:
+        raise ValueError(
+            f"{name} must have shape ({length},), got {tuple(array.shape)}."
+        )
+    return array
+
+
+def _as_matrix(value: Any, *, shape: tuple[int, int], name: str):
+    array = jnp.asarray(value)
+    if array.ndim != 2 or tuple(array.shape) != shape:
+        raise ValueError(f"{name} must have shape {shape}, got {tuple(array.shape)}.")
+    return array
+
+
+def _as_pair(value: Any, *, name: str, allow_none: bool = False):
+    """Normalize a scalar or two-item iterable to a pair.
+
+    Scalars are applied equally to both axes. ``None`` becomes ``(None, None)``
+    only when the caller explicitly permits an omitted value.
+    """
+    if value is None:
+        if allow_none:
+            return (None, None)
+        raise TypeError(f"{name} must be a scalar or a pair.")
+
+    if isinstance(value, (str, bytes)):
+        raise TypeError(f"{name} must be a scalar or a pair, got {value!r}.")
+
+    try:
+        result = tuple(value)
+    except TypeError:
+        return (value, value)
+
+    if len(result) != 2:
+        raise ValueError(f"{name} must be a scalar or contain exactly two values.")
+    return result
+
 
 class CenteredDFT:
-    r"""
-    Centered ordinary DFT operator.
+    r"""Centered ordinary DFT operator.
 
     Computes
 
@@ -31,83 +124,68 @@ class CenteredDFT:
     """
 
     def __call__(self, g):
+        g = jnp.asarray(g)
+        if g.ndim != 1:
+            raise ValueError(f"g must be one-dimensional, got shape {tuple(g.shape)}.")
+        if g.shape[0] == 0:
+            raise ValueError("g must contain at least one sample.")
         return fftshift(fft(ifftshift(g)))
 
+
 class FRDFT:
-    r"""
-    Fractional discrete Fourier transform operator. This class represents the fractional DFT
+    r"""Fractional discrete Fourier transform operator.
+
+    This class represents
 
     $$
     \operatorname{frdft}_{\alpha}(\mathbf g)[m]
     =
     \sum_{n=0}^{N-1}
-    \mathbf g[n]\exp(-i2\pi\alpha mn),
+    \mathbf g[n]\exp(-i2\pi\alpha mn).
     $$
 
-    where $N$ is the length of the vector $\v{g}$. The ordinary DFT is recovered when
-
-    $$
-    \alpha = \frac{1}{N}.
-    $$
-
-    The transform is evaluated using the Bailey--Swarztrauber /
-    Bluestein chirp-convolution algorithm. This rewrites the fractional
-    DFT as a linear convolution, which is then evaluated using FFTs. The
-    resulting algorithm has the same asymptotic complexity as an FFT,
-    although with a larger constant prefactor.
-
-    Creating an ``FRDFT`` object precomputes the chirp factors and the FFT
-    of the convolution kernel. The resulting object can then be reused to
-    transform many different input vectors with the same ``N`` and
-    ``alpha``.
+    The ordinary DFT is recovered when $\alpha=1/N$. The transform is evaluated
+    using the Bailey--Swarztrauber/Bluestein chirp-convolution algorithm.
+    Constructing an ``FRDFT`` precomputes the chirps and convolution kernel so the
+    operator can be reused with different vectors of the same length.
 
     Parameters
     ----------
     N
-        Length of the input and output vectors.
+        Length of the input and output vectors. Must be a positive integer.
     alpha
-        Fractionality parameter $\alpha$.
+        Finite fractionality parameter $\alpha$.
 
     See Also
     --------
     frdft
         One-shot convenience function.
     """
+
     def __init__(self, N, alpha):
-        self.N = int(N)
-        self.alpha = alpha
-        n = jnp.arange(self.N)
-        theta = lambda n: jnp.exp(1j * jnp.pi * alpha * n**2)
-        self.ThetaStar = jnp.conjugate(theta(n))
-        Z = jnp.concatenate((theta(n), theta(n - self.N)))
-        self.Zfft = fft(Z)
+        self.N = _validate_positive_int(N)
+        self.alpha = _validate_finite_scalar(alpha, name="alpha")
+        # Float64 avoids int32 overflow in n**2 once n exceeds 46,340.
+        n = np.arange(self.N, dtype=np.float64)
+        # exp(i*pi*alpha*n**2) = exp(i*2*pi*(alpha/2)*n**2).
+        theta = _unit_phase(0.5 * self.alpha * n**2)
+        theta_negative = _unit_phase(0.5 * self.alpha * (n - self.N) ** 2)
+
+        self.ThetaStar = jnp.conjugate(theta)
+        self.Zfft = fft(jnp.concatenate((theta, theta_negative)))
 
     def __call__(self, g):
-        r"""
-        Apply the fractional DFT to an input vector.
-
-        Parameters
-        ----------
-        g
-            Input vector of length ``N``.
-
-        Returns
-        -------
-        Array
-            The fractional DFT of ``g``.
-        """
-        if g.shape[0] != self.N:
-            raise ValueError(f"Expected input of length {self.N}, got {g.shape[0]}.")
+        """Apply the fractional DFT to a vector of length ``N``."""
+        g = _as_vector(g, length=self.N, name="g")
         Y = jnp.pad(g * self.ThetaStar, (0, self.N))
-        conv = ifft(fft(Y) * self.Zfft)[:self.N]
+        conv = ifft(fft(Y) * self.Zfft)[: self.N]
         return self.ThetaStar * conv
 
-class CenteredFRDFT:
-    r"""
-    Centered fractional discrete Fourier transform operator.
 
-    This wraps [`FRDFT`][flexft.core.FRDFT] with the phase factors needed to
-    evaluate
+class CenteredFRDFT:
+    r"""Centered fractional discrete Fourier transform operator.
+
+    This wraps [`FRDFT`][flexft.core.FRDFT] with the phases needed to evaluate
 
     $$
     \sum_{n=0}^{N-1}
@@ -115,149 +193,104 @@ class CenteredFRDFT:
     \exp\left[-i2\pi\alpha(m-c)(n-c)\right],
     $$
 
-    where \(c=\lfloor N/2\rfloor\).
+    where $c=\lfloor N/2\rfloor$.
     """
-    
+
     def __init__(self, N, alpha):
-        self.N = N
-        n = jnp.arange(N)
-        c = N // 2
-        pre_phase = 1j * 2 * jnp.pi * alpha * c * n
-        self.pre = jnp.exp(pre_phase)
-        post_phase = 1j * 2 * jnp.pi * alpha * (c * n - c**2)
-        self.post = jnp.exp(post_phase)
-        self.frdft = FRDFT(N, alpha)
+        self.N = _validate_positive_int(N)
+        self.alpha = _validate_finite_scalar(alpha, name="alpha")
+
+        n = np.arange(self.N, dtype=np.float64)
+        c = self.N // 2
+        self.pre = _unit_phase(self.alpha * c * n)
+        self.post = _unit_phase(self.alpha * (c * n - c**2))
+        self.frdft = FRDFT(self.N, self.alpha)
 
     def __call__(self, g):
-        r"""
-        Apply the *centered* fractional DFT to an input vector.
-
-        Parameters
-        ----------
-        g
-            Input vector of length ``N``.
-
-        Returns
-        -------
-        Array
-            The *centered* fractional DFT of ``g``.
-        """
-        if g.shape[0] != self.N:
-            raise ValueError(f"Expected input of length {self.N}, got {g.shape[0]}.")
+        """Apply the centered fractional DFT to a vector of length ``N``."""
+        g = _as_vector(g, length=self.N, name="g")
         return self.post * self.frdft(self.pre * g)
 
+
 def frdft(g, alpha):
-    r"""
-    One-shot wrapper around FRDFT.
+    """Apply a fractional DFT without explicitly constructing a reusable plan."""
+    g = jnp.asarray(g)
+    if g.ndim != 1:
+        raise ValueError(f"g must be one-dimensional, got shape {tuple(g.shape)}.")
+    return FRDFT(g.shape[0], alpha)(g)
 
-     Parameters
-        ----------
-        g
-            Input vector of length ``N``.
-        alpha
-            Fractionality parameter $\alpha$.
-
-        Returns
-        -------
-        Array
-            The fractional DFT of ``g``.
-    """
-    return FRDFT(g.shape[-1], alpha)(g)
 
 class FlexFT:
-    r"""
-    Approximates the continuous Fourier transform
-    
-    $$
-    F(k) = \int f(x)\exp(-i2\pi k x)\,\mathrm dx.
-    $$
-    
-    on the uniform grids
+    r"""Approximate the continuous Fourier transform on uniform grids.
+
+    The transform convention is
 
     $$
-    \v{x}[n] = x_0 + (n-c) \delta_x,
+    F(k) = \int f(x)\exp(-i2\pi kx)\,\mathrm dx.
+    $$
+
+    The grids are
+
+    $$
+    \mathbf{x}[n] = x_0 + (n-c)\delta_x,
     \qquad
-    \v{k}[m] = k_0 + (m-c) \delta_k,
+    \mathbf{k}[m] = k_0 + (m-c)\delta_k,
     $$
 
-    where \(c=\lfloor N/2\rfloor\).
-
-    If ``dk`` is not provided, the FFT-compatible spacing
-
-    $$
-    \delta_k = \frac{1}{N\delta_x}
-    $$
-
-    is used and the core transform is a centered ordinary DFT. If ``dk``
-    is provided, the core transform is a centered fractional DFT.
+    where $c=\lfloor N/2\rfloor$. If ``dk`` is omitted, the FFT-compatible
+    spacing $\delta_k=1/(N\delta_x)$ is used.
 
     Parameters
     ----------
     N
-        Length of the input and output vectors.
+        Positive input and output length.
     dx
-        Direct-space grid spacing $\delta_x$. 
+        Positive direct-space spacing $\delta_x$.
     dk
-        Reciprocal-space grid spacing $\delta_k$. If not provided,
-        the FFT-compatible spacing ``1 / (N * dx)`` is used.
+        Positive reciprocal-space spacing $\delta_k$. If omitted, use
+        ``1 / (N * dx)``.
     x0
-        Centre of the direct-space grid. If not provided, zero is used.
+        Direct-space grid centre. Defaults to zero.
     k0
-        Centre of the reciprocal-space grid. If not provided, zero is used.
+        Reciprocal-space grid centre. Defaults to zero.
     """
 
-    def __init__(self, *, N, dx, dk=None, x0=None, k0=None):
-        self.dx = dx
-        self.N = int(N)
-        
+    def __init__(self, *, N, dx, dk=None, x0=0.0, k0=0.0):
+        self.N = _validate_positive_int(N)
+        self.dx = _validate_spacing(dx, name="dx")
+        self.x0 = _validate_finite_scalar(x0, name="x0")
+        self.k0 = _validate_finite_scalar(k0, name="k0")
+
         if dk is None:
-            self.dk = 1 / (self.N * self.dx)
-            self.core = CenteredDFT
+            self.dk = 1.0 / (self.N * self.dx)
+            self.core = CenteredDFT()
         else:
-            self.dk = dk
+            self.dk = _validate_spacing(dk, name="dk")
             self.core = CenteredFRDFT(self.N, self.dx * self.dk)
 
-        c = N // 2
-        n = jnp.arange(self.N)
+        c = self.N // 2
+        n = np.arange(self.N, dtype=np.float64)
         x = (n - c) * self.dx
         k = (n - c) * self.dk
-
-        if k0 is None:
-            self.k0 = 0
-            self.pre = 1
-        else:
-            self.k0 = k0
-            pre_phase = -1j * 2 * jnp.pi * self.k0 * x
-            self.pre = jnp.exp(pre_phase)
-        if x0 is None:
-            self.x0 = 0
-            self.post = 1
-        else:
-            self.x0=x0
-            post_phase = -1j * 2 * jnp.pi * (k + self.k0) * x0
-            self.post = jnp.exp(post_phase)
+        self.pre = 1.0 if self.k0 == 0 else _unit_phase(-self.k0 * x)
+        self.post = 1.0 if self.x0 == 0 else _unit_phase(-self.x0 * (k + self.k0))
 
     def __call__(self, f):
-        if f.shape[0] != self.N:
-            raise ValueError(f"Expected input of length {self.N}, got {f.shape[0]}.")
-
+        """Transform samples ``f`` with shape ``(N,)``."""
+        f = _as_vector(f, length=self.N, name="f")
         return self.dx * self.post * self.core(self.pre * f)
 
-def flexft(f, *, dx, dk=None, x0=None, k0=None):
-    r"""
-    One-shot wrapper around [`FlexFT`][flexft.core.FlexFT].
-    """
-    return IFlexFT(
-        N=f.shape[0],
-        dx=dx,
-        dk=dk,
-        x0=x0,
-        k0=k0,
-    )(f)
+
+def flexft(f, *, dx, dk=None, x0=0.0, k0=0.0):
+    """Apply a forward FlexFT without explicitly constructing a reusable plan."""
+    f = jnp.asarray(f)
+    if f.ndim != 1:
+        raise ValueError(f"f must be one-dimensional, got shape {tuple(f.shape)}.")
+    return FlexFT(N=f.shape[0], dx=dx, dk=dk, x0=x0, k0=k0)(f)
+
 
 class IFlexFT:
-    r"""
-    Approximate the inverse continuous Fourier transform on uniform grids.
+    r"""Approximate the inverse continuous Fourier transform on uniform grids.
 
     This approximates
 
@@ -265,141 +298,137 @@ class IFlexFT:
     f(x) = \int F(k)\exp(i2\pi kx)\,\mathrm dk.
     $$
 
-    The original direct- and reciprocal-space grids are assumed to be
-
-    $$
-    \v{x}[n] = x_0 + (n-c)\delta_x,
-    \qquad
-    \v{k}[m] = k_0 + (m-c)\delta_k.
-    $$
+    ``dk`` always denotes reciprocal-space spacing and is required. ``dx``
+    always denotes direct-space spacing; when omitted, the FFT-compatible value
+    ``1 / (N * dk)`` is used.
 
     Parameters
     ----------
     N
-        Length of the input and output vectors.
-    dx
-        Direct-space grid spacing $\delta_x$. If not provided,
-        the FFT-compatible spacing ``1 / (N * dk)`` is used.
+        Positive input and output length.
     dk
-        Reciprocal-space grid spacing $\delta_k$. 
+        Positive reciprocal-space spacing $\delta_k$.
+    dx
+        Positive direct-space spacing $\delta_x$. If omitted, use
+        ``1 / (N * dk)``.
     x0
-        Centre of the direct-space grid. If not provided, zero is used.
+        Direct-space grid centre. Defaults to zero.
     k0
-        Centre of the reciprocal-space grid. If not provided, zero is used.
+        Reciprocal-space grid centre. Defaults to zero.
     """
 
-    def __init__(self, *, N, dk, dx=None, x0=None, k0=None):
-        self.N = int(N)
-        self.dk = dk
-        self.x0 = x0
-        self.k0 = k0
+    def __init__(self, *, N, dk, dx=None, x0=0.0, k0=0.0):
+        self.N = _validate_positive_int(N)
+        self.dk = _validate_spacing(dk, name="dk")
+        self.x0 = _validate_finite_scalar(x0, name="x0")
+        self.k0 = _validate_finite_scalar(k0, name="k0")
 
+        requested_dx = None if dx is None else _validate_spacing(dx, name="dx")
         self.forward_like = FlexFT(
             N=self.N,
-            dx=dk,
-            dk=dx,
-            x0=k0,
-            k0=x0,
+            dx=self.dk,
+            dk=requested_dx,
+            x0=self.k0,
+            k0=self.x0,
         )
-
         self.dx = self.forward_like.dk
 
     def __call__(self, F):
-        if F.shape[0] != self.N:
-            raise ValueError(f"Expected input of length {self.N}, got {F.shape[0]}.")
-
+        """Inverse-transform samples ``F`` with shape ``(N,)``."""
+        F = _as_vector(F, length=self.N, name="F")
         return jnp.conj(self.forward_like(jnp.conj(F)))
 
-def iflexft(F, *, dk, dx=None, x0=None, k0=None):
-    r"""
-    One-shot wrapper around [`IFlexFT`][flexft.core.IFlexFT].
-    """
-    return IFlexFT(
-        N=F.shape[0],
-        dk=dk,
-        dx=dx,
-        x0=x0,
-        k0=k0,
-    )(F)
 
-def _pair(value, *, name):
-    if value is None:
-        return (None, None)
-    if len(value) != 2:
-        raise ValueError(f"{name} must be a pair.")
-    return value
+def iflexft(F, *, dk, dx=None, x0=0.0, k0=0.0):
+    """Apply an inverse FlexFT without constructing a reusable plan."""
+    F = jnp.asarray(F)
+    if F.ndim != 1:
+        raise ValueError(f"F must be one-dimensional, got shape {tuple(F.shape)}.")
+    return IFlexFT(N=F.shape[0], dk=dk, dx=dx, x0=x0, k0=k0)(F)
 
 
 class FlexFT2D:
-    r"""
-    Approximate the 2D continuous Fourier transform on uniform tensor-product grids.
+    """Approximate the 2D CFT on uniform tensor-product grids.
 
-    The transform is applied separably: first along axis 0, then along axis 1.
+    ``dx`` contains the direct-space spacings and is required. ``dk`` contains
+    the optional reciprocal-space spacings. Each grid argument may be a scalar,
+    which is applied to both axes, or an axis-specific pair. The transform is
+    applied separably along axis 0 and then axis 1.
     """
 
-    def __init__(self, *, N, dx, dk=None, x0=None, k0=None):
-        N1, N2 = N
-        dx1, dx2 = dx
-        dk1, dk2 = _pair(dk, name="dk")
-        x01, x02 = _pair(x0, name="x0")
-        k01, k02 = _pair(k0, name="k0")
+    def __init__(self, *, N, dx, dk=None, x0=0.0, k0=0.0):
+        N1, N2 = _as_pair(N, name="N")
+        dx1, dx2 = _as_pair(dx, name="dx")
+        dk1, dk2 = _as_pair(dk, name="dk", allow_none=True)
+        x01, x02 = _as_pair(x0, name="x0")
+        k01, k02 = _as_pair(k0, name="k0")
 
-        self.N = (int(N1), int(N2))
+        self.N = (
+            _validate_positive_int(N1, name="N[0]"),
+            _validate_positive_int(N2, name="N[1]"),
+        )
+        self.op1 = FlexFT(N=self.N[0], dx=dx1, dk=dk1, x0=x01, k0=k01)
+        self.op2 = FlexFT(N=self.N[1], dx=dx2, dk=dk2, x0=x02, k0=k02)
 
-        self.op1 = FlexFT(N=N1, dx=dx1, dk=dk1, x0=x01, k0=k01)
-        self.op2 = FlexFT(N=N2, dx=dx2, dk=dk2, x0=x02, k0=k02)
+        self.dx = (self.op1.dx, self.op2.dx)
+        self.dk = (self.op1.dk, self.op2.dk)
+        self.x0 = (self.op1.x0, self.op2.x0)
+        self.k0 = (self.op1.k0, self.op2.k0)
 
         self._op1_vm = jax.vmap(self.op1, in_axes=1, out_axes=1)
         self._op2_vm = jax.vmap(self.op2, in_axes=0, out_axes=0)
 
     def __call__(self, f):
-        if f.shape[:2] != self.N:
-            raise ValueError(f"Expected input shape {self.N}, got {f.shape[:2]}.")
-
+        f = _as_matrix(f, shape=self.N, name="f")
         return self._op2_vm(self._op1_vm(f))
 
-def flexft2d(f, *, dx, dk=None, x0=None, k0=None):
-    r"""
-    One-shot wrapper around [`FlexFT2D`][flexft.core.FlexFT2D].
-    """
-    return FlexFT2D(N=f.shape[:2], dx=dx, dk=dk, x0=x0, k0=k0)(f)
+
+def flexft2d(f, *, dx, dk=None, x0=0.0, k0=0.0):
+    """Apply a 2D forward FlexFT without constructing a reusable plan."""
+    f = jnp.asarray(f)
+    if f.ndim != 2:
+        raise ValueError(f"f must be two-dimensional, got shape {tuple(f.shape)}.")
+    return FlexFT2D(N=f.shape, dx=dx, dk=dk, x0=x0, k0=k0)(f)
+
 
 class IFlexFT2D:
-    r"""
-    Approximate the inverse 2D continuous Fourier transform on uniform grids.
+    """Approximate the inverse 2D CFT on uniform tensor-product grids.
+
+    ``dk`` contains the required reciprocal-space spacings. ``dx`` contains the
+    optional direct-space spacings; if omitted, FFT-compatible values are used.
+    Each grid argument may be a scalar, which is applied to both axes, or an
+    axis-specific pair.
     """
 
-    def __init__(self, *, N, dx, dk=None, x0=None, k0=None):
-        N1, N2 = N
-        dx1, dx2 = dx
-
-        if dk is None:
-            dk1 = 1 / (int(N1) * dx1)
-            dk2 = 1 / (int(N2) * dx2)
-        else:
-            dk1, dk2 = dk
-
-        x01, x02 = _pair(x0, name="x0")
-        k01, k02 = _pair(k0, name="k0")
-
-        self.N = (int(N1), int(N2))
+    def __init__(self, *, N, dk, dx=None, x0=0.0, k0=0.0):
+        N_pair = _as_pair(N, name="N")
+        dk_pair = _as_pair(dk, name="dk")
+        dx_pair = _as_pair(dx, name="dx", allow_none=True)
+        x0_pair = _as_pair(x0, name="x0")
+        k0_pair = _as_pair(k0, name="k0")
 
         self.forward_like = FlexFT2D(
-            N=self.N,
-            dx=(dk1, dk2),
-            dk=(dx1, dx2),
-            x0=(k01, k02),
-            k0=(x01, x02),
+            N=N_pair,
+            dx=dk_pair,
+            dk=dx_pair,
+            x0=k0_pair,
+            k0=x0_pair,
         )
 
-    def __call__(self, F):
-        if F.shape[:2] != self.N:
-            raise ValueError(f"Expected input shape {self.N}, got {F.shape[:2]}.")
+        self.N = self.forward_like.N
+        self.dk = self.forward_like.dx
+        self.dx = self.forward_like.dk
+        self.x0 = self.forward_like.k0
+        self.k0 = self.forward_like.x0
 
+    def __call__(self, F):
+        F = _as_matrix(F, shape=self.N, name="F")
         return jnp.conj(self.forward_like(jnp.conj(F)))
 
-def iflexft2d(F, *, dx, dk=None, x0=None, k0=None):
-    r"""
-    One-shot wrapper around [`IFlexFT2D`][flexft.core.IFlexFT2D].
-    """
-    return IFlexFT2D(N=F.shape[:2], dx=dx, dk=dk, x0=x0, k0=k0)(F)
+
+def iflexft2d(F, *, dk, dx=None, x0=0.0, k0=0.0):
+    """Apply a 2D inverse FlexFT without constructing a reusable plan."""
+    F = jnp.asarray(F)
+    if F.ndim != 2:
+        raise ValueError(f"F must be two-dimensional, got shape {tuple(F.shape)}.")
+    return IFlexFT2D(N=F.shape, dk=dk, dx=dx, x0=x0, k0=k0)(F)
