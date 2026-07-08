@@ -1,6 +1,10 @@
 site_name: FlexFT
+site_url: https://tomsturges.github.io/FlexFT/
 site_description: Bailey-Swarztrauber transform utilities for approximating continuous Fourier transforms
 site_author: Thomas J. Sturges
+repo_url: https://github.com/tomsturges/FlexFT
+repo_name: tomsturges/FlexFT
+edit_uri: edit/main/docs/
 
 extra_css:
   - stylesheets/extra.css

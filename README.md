@@ -1,5 +1,7 @@
 # FlexFT
 
+[![Documentation](https://img.shields.io/badge/docs-online-blue)](https://tomsturges.github.io/FlexFT/)
+
 FlexFT evaluates finite-sum approximations to continuous Fourier transforms on
 uniform input and output grids whose spacings can be chosen independently. It
 uses the Bailey--Swarztrauber fractional DFT/Bluestein convolution, implemented
@@ -46,5 +48,7 @@ Omit `dk` in the forward transform to use the FFT-compatible spacing
 For repeated transforms with unchanged grids, construct and reuse `FlexFT` or
 `IFlexFT`; this reuses the precomputed convolution kernel.
 
-See the documentation for the derivation, shifted grids, 2D transforms, and
-more examples.
+## Documentation
+
+Read the [full documentation](https://tomsturges.github.io/FlexFT/) for the
+derivation, shifted grids, 2D transforms, API reference, and more examples.

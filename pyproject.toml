@@ -31,6 +31,7 @@ dependencies = [
 
 [project.urls]
 Homepage = "https://github.com/tomsturges/FlexFT"
+Documentation = "https://tomsturges.github.io/FlexFT/"
 Repository = "https://github.com/tomsturges/FlexFT"
 Issues = "https://github.com/tomsturges/FlexFT/issues"
 
