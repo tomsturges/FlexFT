@@ -85,7 +85,13 @@ F2 = flexft2d(f2, dx=dx2, dk=dk2)
 f2_inverse_approximation = iflexft2d(F2, dk=dk2, dx=dx2)
 ```
 
-Every 2D grid argument is a pair ordered by array axis.
+Each 2D grid argument may be a pair ordered by array axis, as above, or a scalar
+that is applied equally to both axes. For example, a square isotropic transform
+can be written as:
+
+```python
+F2 = flexft2d(f2_square, dx=0.05, dk=0.02)
+```
 
 ## Precision
 
