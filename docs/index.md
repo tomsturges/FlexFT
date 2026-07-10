@@ -4,21 +4,27 @@ This package evaluates numerical approximations to the continuous Fourier transf
 
 Usage is straightforward. The user provides:
 
-1. A set of uniformally spaced sample points $\v{x}$.
-2. A set of samples of the function at the sample points $\v{f}=f(\v{x})$.
-3. A set of desired sample points $\v{k}$ in reciprocal space where the user wants to evaulate an approximation to the CFT of $f(x)$. These must also be uniformally spaced and the same number of samples as $\v{x}$.
+1. The desired spacing in real space $\delta_x$ and reciprocal space $\delta_k$, as well as the grid centers $x_0$ and $k_0$. These correspond to the uniform grids
 
-We briefly note that we choose the ordinary-frequency Fourier-transform convention
+    $$
+    \begin{align}
+    \v{x}[n] &= (n - c)\delta_x + x_0, & \v{k}[n] &= (n - c)\delta_k + k_0,
+    \end{align}
+    $$
+
+    where the central index is $c = \text{floor}(N/2)$.
+
+2. The samples of the function $f(x)$ at the sample points $\v{f}=f(\v{x})$.
+
+The function `flexft` then returns a vector $\tilde{\v{F}}$ which is an approximation to CFT at the chosen sample points 
 
 $$
-F(k) = \hat{\mathcal{F}}_x[f(x)](k) = \left. \int_{-\infty}^\infty f(x)\exp(-i 2\pi \xi x) \d x \right|_{\xi = k}.
+\begin{align}
+\text{flexft}(\delta_x, \delta_k, x_0, k_0, \v{f}) &\approx F(\v{k}).\\
+F(\v{k}) \equiv \hat{\mathcal{F}}_x[f(x)](\v{k}) &= \left. \int_{-\infty}^\infty f(x)\exp(-i 2\pi \xi x) \d x \right|_{\xi = \v{k}}.
+\end{align}
 $$
 
-The function `flexft` returns a vector $\tilde{\v{F}}$ which is an approximation to CFT at the chosen sample points 
-
-$$
-\text{flexft}(\v{x}, \v{k}, \v{f}) \equiv \tilde{\v{F}} \approx \v{F} \equiv F(\v{k}).
-$$
 
 ## Implementation overview
 

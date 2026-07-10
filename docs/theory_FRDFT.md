@@ -39,14 +39,14 @@ n & 0 & 1 & 2 & 3 & 4 & 5 & 6 & 7 \\
 \hline
 \v{Y}[n] & \v{y}[0] & \v{y}[1] & \v{y}[2] & \v{y}[3] & 0 & 0 & 0 & 0 \\
 \hline
-\v{Z}[m-n]\big|_{m=0} & z_0 & z_{-1} & z_{-2} & z_{-3} & z_{4} & z_{3} & z_{2} & z_{1}  \\
+\v{Z}[m-n]\big|_{m=0} & \theta_0 & \theta_{-1} & \theta_{-2} & \theta_{-3} & \theta_{4} & \theta_{3} & \theta_{2} & \theta_{1}  \\
 \hline
-\v{Z}[m-n]\big|_{m=2} & z_{2} & z_{1} & z_0 & z_{-1} & z_{-2} & z_{-3} & z_{-4} & z_{3}  \\
+\v{Z}[m-n]\big|_{m=2} & \theta_{2} & \theta_{1} & \theta_0 & \theta_{-1} & \theta_{-2} & \theta_{-3} & \theta_{-4} & \theta_{3}  \\
 \hline
 \end{array}
 $$
 
-Those with a keen eye may notice that the value $z_4$ will never actually multiply anything non-zero, so it seems that we have made the arrays one element longer than needed: a length of $2N$ rather than the possible $2N-1$. This is intentional because, if the original length $N$ is a power of 2 (the fastest length for an FFT), then the length $2N$ is also a power of 2. To make this discussion more formal, let us now define the arrays
+Those with a keen eye may notice that the value $\theta_4$ will never actually multiply anything non-zero, so it seems that we have made the arrays one element longer than needed: a length of $2N$ rather than the possible $2N-1$. This is intentional because, if the original length $N$ is a power of 2 (the fastest length for an FFT), then the length $2N$ is also a power of 2. To make this discussion more formal, let us now explicitly define the arrays as
 
 $$
 \begin{align}

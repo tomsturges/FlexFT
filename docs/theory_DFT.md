@@ -24,7 +24,7 @@ $$
 \int_{-L_x/2}^{L_x/2} f(x) \rightarrow \delta_x \sum_{n=0}^{N-1} f(\v{x}[n]),
 $$
 
-where the centred grid $\v{x}$ is defined by its components $\v{x}[n] = (n - c)\delta_x$, with the central index $c = \lfloor N/2 \rfloor$ and the spacing $\delta_x = L_x / N$. To proceed with approximating the CFT we also need to define the output grid $\v{k}$ defined by its components $\v{k}[n] = (n - c) \delta_k$. Putting everything together we can approximate the CFT as
+where the centred grid $\v{x}$ is defined by its components $\v{x}[n] = (n - c)\delta_x$, with the central index $c = \lfloor N/2 \rfloor$ and the spacing $\delta_x = L_x / N$. To proceed with approximating the CFT we also need to define the output grid $\v{k}$ by its components $\v{k}[n] = (n - c) \delta_k$. Putting everything together we can approximate the CFT as
 
 <a id="eqn-truncation-and-riemann"></a>
 
@@ -54,7 +54,13 @@ $$
 \end{align}
 $$
 
-Using the definition of the DFT, $\text{fft}(\v{A})[m] = \sum_n \v{a}[n] \phi(-mn)$, we have
+Using the definition of the DFT 
+
+$$
+\text{fft}(\v{A})[m] = \sum_n \v{a}[n] \phi(-mn),
+$$ 
+
+we have
 
 $$
 \begin{equation}
@@ -69,7 +75,7 @@ $$
 \text{fft}\Big(S_n(\v{a})\Big)[m] = \phi(-n m) \text{fft}(\v{a})[m],
 $$
 
-where $S_n(\v{x})[m] = \v{x}[m-n]$ is the cyclic shift operator where all indices are interpreted modulo $N$. Indeed in this documentation, all indices in square brackets should be interpreted as modulo the vector length $N$. Applying the shift property to equation \eqref{eqn:after_DFT_def} gives us
+where $S_n(\v{x})[m] = \v{x}[m-n]$ is the cyclic shift operator where all indices are interpreted modulo $N$. Indeed in this documentation, all indices in square brackets should always be interpreted as modulo the vector length $N$. Applying the shift property to equation \eqref{eqn:after_DFT_def} gives us
 
 $$
 \begin{equation}
@@ -102,7 +108,7 @@ $$
 \end{equation}
 $$
 
-In many programming languages an operator (and its inverse) is defined to shift the zero-frequency component of a DFT to the centre of the vector. They are defined as
+Many programming languages define an operator (and its inverse) that shifts the zero-frequency component of a DFT to the centre of the vector. They are defined as
 
 $$
 \begin{align}

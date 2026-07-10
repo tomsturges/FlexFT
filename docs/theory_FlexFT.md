@@ -24,7 +24,7 @@ $$
 \end{equation}
 $$
 
-where we define $\delta = \delta_k \delta_x$ for convenience. To proceed further, we can note that the sum in equation \eqref{eqn:pre_FRDFT} looks somewhat like a DFT of the term in square brackets. If we were to replace $\delta$ with $1/N$ than this would be exactly a DFT. For this reason, we can think of this sum as some kind of *fractional* DFT. This terminology was introduced by D. H. Bailey and P. N. Swarztrauber [@BaileySwarztrauber1991; @BaileySwarztrauber1994] and is discussed in detail in the corresponding [theory page](theory_FRDFT.md). The fractional-DFT is defined as
+where we define $\delta = \delta_k \delta_x$ for convenience. To proceed further, we can note that the sum in equation \eqref{eqn:pre_FRDFT} looks somewhat like a DFT of the term in square brackets. If we were to replace $\delta$ with $1/N$ then this would be exactly a DFT. For this reason, we can think of this sum as some kind of *fractional* DFT. This terminology was introduced by D. H. Bailey and P. N. Swarztrauber [@BaileySwarztrauber1991; @BaileySwarztrauber1994] and is discussed in detail in the corresponding [theory page](theory_FRDFT.md). The fractional-DFT is defined as
 
 $$
 \begin{equation}
