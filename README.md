@@ -69,7 +69,7 @@ fig.tight_layout()
 fig.savefig("docs/assets/readme-quick-start.png", dpi=200)
 ```
 
-![FlexFT approximation compared with the exact Gaussian transform](docs/assets/readme-quick-start.png)
+![FlexFT approximation compared with the exact Gaussian transform](https://raw.githubusercontent.com/tomsturges/FlexFT/v0.1.1/docs/assets/readme-quick-start.png)
 
 Omit `dk` in the forward transform to use the FFT-compatible spacing
 `1 / (N * dx)`. Conversely, omit `dx` in the inverse transform to use
