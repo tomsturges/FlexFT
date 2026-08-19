@@ -58,10 +58,8 @@ where $\v{n}$ is the vectorised version of the integer indices and element-wise 
 
 ## Computational cost
 
-FlexFT chooses between two exact evaluations of the same finite sum. Direct
-matrix evaluation costs $O(NM)$ and is advantageous for small output grids.
-Bluestein evaluation uses a convolution of length $N+M$ and costs
+FlexFT provides two exact evaluations of the same flexible-grid finite sum.
+`method="direct"` uses a matrix evaluation costing $O(NM)$, while the default
+`method="bluestein"` uses a convolution of length $N+M$ and costs
 $O((N+M)\log(N+M))$. A reusable plan precomputes either the direct matrix or
-the FFT of the convolution kernel. The implementation compares estimates of
-these costs when constructing the plan and records the choice in its `method`
-attribute.
+the FFT of the convolution kernel. The user chooses the method explicitly.

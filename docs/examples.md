@@ -9,6 +9,11 @@ meaning:
 - `x0`: direct-space grid centre
 - `k0`: reciprocal-space grid centre
 
+The default `method="bluestein"` evaluates the flexible-grid sum through FFT
+convolution. `method="direct"` evaluates the same sum as a dense matrix-vector
+product. `method="fft"` selects the ordinary FFT, fixes `M=N`, and determines
+the output spacing from the input grid.
+
 ## One-shot forward transform
 
 ```python
@@ -34,13 +39,13 @@ F_region = flexft(f, dx=dx, dk=dk, M=M, k0=0.4)
 k_region = 0.4 + (jnp.arange(M) - M // 2) * dk
 ```
 
-The forward transform requires an explicit `dk`. To use the FFT-compatible
-grid and centered ordinary DFT path explicitly, construct an FFT plan:
+The flexible methods require an explicit `dk`. To use the FFT-compatible grid
+and centered ordinary DFT path, select it explicitly and omit `dk`:
 
 ```python
 from flexft import FlexFT
 
-fft_transform = FlexFT.fft(N=N, dx=dx)
+fft_transform = FlexFT(N=N, dx=dx, method="fft")
 F_fft = fft_transform(f)
 ```
 
@@ -53,15 +58,14 @@ the same grids.
 ```python
 from flexft import FlexFT
 
-transform = FlexFT(N=N, M=32, dx=dx, dk=dk)
+transform = FlexFT(N=N, M=32, dx=dx, dk=dk, method="direct")
 F1 = transform(f)
 F2 = transform(2 * f)
-print(transform.method)  # "direct" or "bluestein"
 ```
 
 ## Inverse transform
 
-The inverse transform requires both `dk` and `dx`.
+The flexible inverse methods require both `dk` and `dx`.
 
 ```python
 from flexft import iflexft
@@ -69,12 +73,12 @@ from flexft import iflexft
 f_inverse_approximation = iflexft(F, dk=dk, dx=dx, M=N)
 ```
 
-Use the class factory for the FFT-compatible spacing and ordinary inverse DFT:
+Select the ordinary inverse DFT explicitly and omit `dx`:
 
 ```python
 from flexft import IFlexFT
 
-inverse_fft_transform = IFlexFT.fft(N=N, dk=dk)
+inverse_fft_transform = IFlexFT(N=N, dk=dk, method="fft")
 f_fft_inverse = inverse_fft_transform(F)
 ```
 
@@ -122,10 +126,10 @@ slice_transform = FlexFT2D(
     N=shape,
     M=(1, shape[1]),
     dx=dx2,
-    dk=dk2,
+    dk=(dk2[0], None),
+    method=("direct", "fft"),
 )
 F2_slice = slice_transform(f2)
-print(slice_transform.method)      # for example ("direct", "bluestein")
 print(slice_transform.axis_order)  # (0, 1)
 ```
 
@@ -137,23 +141,23 @@ can be written as:
 F2 = flexft2d(f2_square, dx=0.05, dk=0.02)
 ```
 
-As in one dimension, the one-shot transform requires `dk`. Use the class
-factory explicitly for an ordinary 2D FFT on the compatible grid:
+As in one dimension, flexible methods require `dk`. Select an ordinary 2D FFT
+explicitly and omit `dk`:
 
 ```python
 from flexft import FlexFT2D
 
-fft_transform_2d = FlexFT2D.fft(N=shape, dx=dx2)
+fft_transform_2d = FlexFT2D(N=shape, dx=dx2, method="fft")
 F2_fft = fft_transform_2d(f2)
 ```
 
-The inverse 2D one-shot function also requires both spacings. Its ordinary-FFT
-path is available through the corresponding class factory:
+The inverse 2D flexible methods require both spacings. For the ordinary-FFT
+path, select it explicitly and omit `dx`:
 
 ```python
 from flexft import IFlexFT2D
 
-inverse_fft_transform_2d = IFlexFT2D.fft(N=shape, dk=dk2)
+inverse_fft_transform_2d = IFlexFT2D(N=shape, dk=dk2, method="fft")
 f2_fft_inverse = inverse_fft_transform_2d(F2)
 ```
 

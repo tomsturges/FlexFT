@@ -29,11 +29,11 @@ $$
 
 ## Implementation overview
 
-For $N$ input and $M$ output samples, `flexft` selects either an $O(NM)$
-direct matrix evaluation or an $O((N+M)\log(N+M))$ Bluestein convolution.
-The latter is based on the article authored by D. H. Bailey and P. N.
-Swarztrauber [@BaileySwarztrauber1994]. Reusable plans precompute the direct
-matrix or the FFT of the convolution kernel.
+For $N$ input and $M$ output samples, `method="direct"` provides an $O(NM)$
+matrix evaluation and the default `method="bluestein"` provides an
+$O((N+M)\log(N+M))$ convolution. The latter is based on the article authored by
+D. H. Bailey and P. N. Swarztrauber [@BaileySwarztrauber1994]. Reusable plans
+precompute the direct matrix or the FFT of the convolution kernel.
 
 ## References
 

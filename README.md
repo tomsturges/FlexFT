@@ -5,7 +5,7 @@
 FlexFT evaluates finite-sum approximations to continuous Fourier transforms
 (CFTs) on uniform input and output grids whose spacings can be chosen
 independently. It uses the Bailey-Swarztrauber fractional DFT/Bluestein
-convolution for larger outputs and direct summation for smaller outputs.
+convolution or direct summation, selected explicitly by the user.
 
 For samples `f(x)` on
 
@@ -22,11 +22,10 @@ k[m] = k0 + (m - floor(M / 2)) * dk.
 
 ## Computational cost
 
-For `N` input samples and `M` output samples, `FlexFT` selects between direct
-summation with cost `O(NM)` and a Bluestein convolution of length `N + M` with
-cost `O((N + M) log(N + M))`. The selected strategy is available as
-`plan.method`. Reusing a plan also reuses its direct matrix or the FFT of its
-Bluestein convolution kernel.
+For `N` input samples and `M` output samples, `method="direct"` uses direct
+summation with cost `O(NM)`, while the default `method="bluestein"` uses a
+convolution of length `N + M` with cost `O((N + M) log(N + M))`. Reusing a plan
+also reuses its direct matrix or the FFT of its Bluestein convolution kernel.
 
 ## Installation
 
@@ -67,13 +66,13 @@ fig.savefig("docs/assets/readme-quick-start.png", dpi=200)
 
 ![FlexFT approximation compared with the exact Gaussian transform](https://raw.githubusercontent.com/tomsturges/FlexFT/v0.1.1/docs/assets/readme-quick-start.png)
 
-The forward transform requires an explicit `dk`. To use the FFT-compatible
-spacing `1 / (N * dx)` and the ordinary FFT implementation, construct a plan
-with `FlexFT.fft(N=N, dx=dx)`. The inverse transform likewise requires `dx`;
-use `IFlexFT.fft(N=N, dk=dk)` for its ordinary-FFT path.
+The default `method="bluestein"` and `method="direct"` require an explicit
+`dk`. For an ordinary FFT, use `method="fft"` and omit `dk`; the compatible
+spacing `1 / (N * dx)` is then fixed by the input grid. The inverse API follows
+the same rule with `dx` as its conditionally omitted spacing.
 
 For repeated transforms with unchanged grids, construct and reuse `FlexFT` or
-`IFlexFT`; this reuses the precomputed convolution kernel.
+`IFlexFT`; this reuses the precomputed direct matrix or convolution kernel.
 
 ## Documentation
 
