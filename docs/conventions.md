@@ -2,7 +2,7 @@ In the following we details the conventions and notations used in this package, 
 
 ## Notation
 
-We will denote vectors/lists in boldface and use $\v{a}[n]$ to denote the $n$th element of $\v{a}$, where the argument in square brackets is always interpreted modulo $N$. Where helpful, we will use the notation $(f(n))_n$ to represent the vector $(f(1), f(2),\dots,f(N))$ where the length $N$ is implicit and easily deduced from context, and the notation $f(\v{x})\equiv(f(\v{x}[n]))_n.$ 
+We will denote vectors/lists in boldface and use $\v{a}[n]$ to denote the $n$th element of $\v{a}$. Input indices use an input length $N$, while output indices may use an independently chosen length $M$. Where helpful, we will use the notation $(f(n))_n$ to represent a vector whose length is implicit and easily deduced from context, and the notation $f(\v{x})\equiv(f(\v{x}[n]))_n.$
 
 We use the floor function, which takes a real number $x$ and returns $\lfloor x \rfloor$, the greatest integer that is less than or equal to $x$.
 

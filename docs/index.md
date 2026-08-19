@@ -8,11 +8,12 @@ Usage is straightforward. The user provides:
 
     $$
     \begin{align}
-    \v{x}[n] &= (n - c)\delta_x + x_0, & \v{k}[n] &= (n - c)\delta_k + k_0,
+    \v{x}[n] &= (n - c_N)\delta_x + x_0, & \v{k}[m] &= (m - c_M)\delta_k + k_0,
     \end{align}
     $$
 
-    where the central index is $c = \text{floor}(N/2)$.
+    where $c_N = \text{floor}(N/2)$ and $c_M = \text{floor}(M/2)$ for
+    independently chosen input and output lengths.
 
 2. The samples of the function $f(x)$ at the sample points $\v{f}=f(\v{x})$.
 
@@ -28,9 +29,12 @@ $$
 
 ## Implementation overview
 
-The function `flexft` uses Bluestein's algorithm to rewrite the discretised approximation to the CFT as a linear convolution, which can then be evaluated as a circular convolution using FFTs. In the current implementation, this requires two forward FFTs and one inverse FFT, each acting on vectors of length $2N$, where $N$ is the number of input samples. This implementation is based on the article authored by D. H. Bailey and P. N. Swarztrauber [@BaileySwarztrauber1994]. Consequently, `flexft` has the same computational complexity as an FFT, although with a larger constant prefactor. When the FFT of the convolution kernel is precomputed, each subsequent evaluation requires only one forward FFT and one inverse FFT of length $2N$, giving an asymptotic arithmetic cost of approximately four times that of an $N$-point FFT.
+For $N$ input and $M$ output samples, `flexft` selects either an $O(NM)$
+direct matrix evaluation or an $O((N+M)\log(N+M))$ Bluestein convolution.
+The latter is based on the article authored by D. H. Bailey and P. N.
+Swarztrauber [@BaileySwarztrauber1994]. Reusable plans precompute the direct
+matrix or the FFT of the convolution kernel.
 
 ## References
 
 \bibliography
-

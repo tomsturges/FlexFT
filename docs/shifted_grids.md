@@ -39,7 +39,7 @@ $$
 \text{daft}_{\delta_x, \delta_k}(\v{f}),
 $$
 
-to represent some abstract discrete approximation to the continuous Fourier transform. This function assumes that the samples $\v{f} = f(\v{x})$ were taken on an input grid $\v{x}[n] = (n - c)\delta_x$ where $c = \lfloor N / 2 \rfloor$ (such that it is centered around the origin). It returns an approximation to $\mathcal{F}_x[f(x)](k)$ at the sample points $\v{k}[n] = (n - c)\delta_k$ (which are also centered around the origin). As such, the approximation to the CFT for shifted grids can be written as
+to represent some abstract discrete approximation to the continuous Fourier transform. This function assumes that the samples $\v{f} = f(\v{x})$ were taken on an input grid $\v{x}[n] = (n - c_N)\delta_x$ where $c_N = \lfloor N / 2 \rfloor$ (such that it is centered around the origin). It returns an approximation to $\mathcal{F}_x[f(x)](k)$ at $M$ sample points $\v{k}[m] = (m - c_M)\delta_k$, where $c_M = \lfloor M / 2 \rfloor$. As such, the approximation to the CFT for shifted grids can be written as
 
 $$
 \begin{equation}

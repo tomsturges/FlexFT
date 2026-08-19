@@ -6,7 +6,7 @@ Given a function $f(x)$ that is negligible outside the interval $(-L_x/2, L_x/2)
 
 ## Approximating the CFT with the fractional DFT
 
-Our derivation begins exactly the same as [equation 1 from the DFT theory page](theory_DFT.md#eqn-truncation-and-riemann). That is, we define an input grid $\v{x}[n] = (n - c)\delta_x$ and an output grid $\v{k}[n] = (n - c)\delta_k$, where $c = \lfloor N / 2 \rfloor$ is the central index of the grids with length $N$. Truncating the integral within the CFT to $(-L_x/2, L_x/2)$ and replacing the integral with a Riemann sum allows us to approximate the CFT as
+Our derivation begins exactly the same as [equation 1 from the DFT theory page](theory_DFT.md#eqn-truncation-and-riemann). We define an input grid $\v{x}[n] = (n - c_N)\delta_x$ with $N$ samples and an output grid $\v{k}[m] = (m - c_M)\delta_k$ with $M$ samples, where $c_N = \lfloor N / 2 \rfloor$ and $c_M = \lfloor M / 2 \rfloor$. Truncating the integral within the CFT to $(-L_x/2, L_x/2)$ and replacing the integral with a Riemann sum allows us to approximate the CFT as
 
 $$
 \begin{equation}
@@ -20,7 +20,7 @@ where $\v{F} = F(\v{k})$ is the vector of samples of the *exact* CFT, and $\tild
 $$
 \begin{equation}
 \label{eqn:pre_FRDFT}
-\tilde{\v{F}}[m] = \delta_x \exp\left(i 2 \pi \delta(c m - c^2) \right) \sum_n \left[\v{f}[n] \exp( i 2 \pi \delta cn) \right] \exp(-i 2 \pi \delta mn),
+\tilde{\v{F}}[m] = \delta_x \exp\left(i 2 \pi \delta(c_N m - c_M c_N) \right) \sum_n \left[\v{f}[n] \exp( i 2 \pi \delta c_M n) \right] \exp(-i 2 \pi \delta mn),
 \end{equation}
 $$
 
@@ -29,7 +29,7 @@ where we define $\delta = \delta_k \delta_x$ for convenience. To proceed further
 $$
 \begin{equation}
 \label{eqn:define-frdft}
-\v{G}_\alpha[m] = \text{frdft}_\alpha(\v{g})[m] = \sum_{n=0}^{N-1} \v{g}[n] \exp(- i 2\pi \alpha m n).
+    \v{G}_\alpha[m] = \text{frdft}_\alpha(\v{g})[m] = \sum_{n=0}^{N-1} \v{g}[n] \exp(- i 2\pi \alpha m n), \qquad 0\leq m<M.
 \end{equation}
 $$
 
@@ -37,11 +37,11 @@ The fractional-DFT can be calculated efficiently as
 
 $$
 \begin{equation}
-    \v{G}_\alpha[m] = \theta_{m,\alpha}^* \text{ifft} \big( \text{fft}(\v{Y}_\alpha) \cdot \text{fft}(\v{Z}_\alpha) \big)[m] \quad \text{for} \quad 0 \leq m < N, 
+    \v{G}_\alpha[m] = \theta_{m,\alpha}^* \text{ifft} \big( \text{fft}(\v{Y}_\alpha) \cdot \text{fft}(\v{Z}_\alpha) \big)[m] \quad \text{for} \quad 0 \leq m < M,
 \end{equation}
 $$
 
-where $\theta_{n,\alpha}=\exp(i \pi \alpha n^2)$ is a phase factor, $\v{Y}_\alpha$ is a zero-padded version of $\v{g}$ multiplied by the conjugated phase factor, and $\v{Z}_\alpha$ is an extended and wrapped-around version of the phase factor. Please see the [corresponding page](theory_FRDFT.md) for the full definitions. The key point here is that these new arrays are twice the length of the original ones. 
+where $\theta_{n,\alpha}=\exp(i \pi \alpha n^2)$ is a phase factor, $\v{Y}_\alpha$ is a zero-padded version of $\v{g}$ multiplied by the conjugated phase factor, and $\v{Z}_\alpha$ is an extended and wrapped-around version of the phase factor. Please see the [corresponding page](theory_FRDFT.md) for the full definitions. The convolution arrays have length $N+M$.
 
 Using the definition of the fractional-DFT we can rewrite equation \eqref{eqn:pre_FRDFT} as 
 
@@ -50,7 +50,7 @@ Using the definition of the fractional-DFT we can rewrite equation \eqref{eqn:pr
     $$
     \begin{equation}
     \label{eqn:final}
-    \tilde{\v{F}} = \delta_x \exp\big( i 2 \pi \delta (c \v{m} - c^2) \big) \text{frdft}_\delta \Big( \v{f} \cdot \exp( i 2 \pi \delta c \v{n}) \Big),
+    \tilde{\v{F}} = \delta_x \exp\big( i 2 \pi \delta (c_N \v{m} - c_M c_N) \big) \text{frdft}_\delta \Big( \v{f} \cdot \exp( i 2 \pi \delta c_M \v{n}) \Big),
     \end{equation}
     $$
 
@@ -58,4 +58,10 @@ where $\v{n}$ is the vectorised version of the integer indices and element-wise 
 
 ## Computational cost
 
-In our implementation, computing equation \eqref{eqn:final} requires two forward FFTs and one inverse FFT, each acting on vectors of length $2N$, where $N$ is the number of input samples. Therefore the computational complexity is the same as an FFT, although with a larger constant prefactor. When the FFT of the convolution kernel is precomputed, each subsequent evaluation requires only one forward FFT and one inverse FFT of length $2N$, giving an asymptotic arithmetic cost of approximately four times that of an $N$-point FFT.
+FlexFT chooses between two exact evaluations of the same finite sum. Direct
+matrix evaluation costs $O(NM)$ and is advantageous for small output grids.
+Bluestein evaluation uses a convolution of length $N+M$ and costs
+$O((N+M)\log(N+M))$. A reusable plan precomputes either the direct matrix or
+the FFT of the convolution kernel. The implementation compares estimates of
+these costs when constructing the plan and records the choice in its `method`
+attribute.

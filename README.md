@@ -5,7 +5,7 @@
 FlexFT evaluates finite-sum approximations to continuous Fourier transforms
 (CFTs) on uniform input and output grids whose spacings can be chosen
 independently. It uses the Bailey-Swarztrauber fractional DFT/Bluestein
-convolution, implemented with JAX FFTs.
+convolution for larger outputs and direct summation for smaller outputs.
 
 For samples `f(x)` on
 
@@ -13,24 +13,20 @@ For samples `f(x)` on
 x[n] = x0 + (n - floor(N / 2)) * dx
 ```
 
-the forward transform `flexft(f, dx=dx, dk=dk, x0=x0, k0=k0)` returns
-approximations on
+the forward transform `flexft(f, dx=dx, dk=dk, M=M, x0=x0, k0=k0)` returns
+`M` approximations on
 
 ```text
-k[m] = k0 + (m - floor(N / 2)) * dk.
+k[m] = k0 + (m - floor(M / 2)) * dk.
 ```
 
 ## Computational cost
 
-`flexft` uses Bluestein's algorithm to rewrite the discretised CFT
-approximation as a linear convolution, then evaluates that convolution with
-FFTs. A one-shot transform currently needs two forward FFTs and one inverse FFT,
-each of length `2N`, where `N` is the number of samples.
-
-The asymptotic complexity is therefore the same as an FFT, but with a larger
-constant prefactor. When the convolution kernel is precomputed by reusing a
-`FlexFT` plan, each subsequent transform needs only one forward FFT and one
-inverse FFT of length `2N`.
+For `N` input samples and `M` output samples, `FlexFT` selects between direct
+summation with cost `O(NM)` and a Bluestein convolution of length `N + M` with
+cost `O((N + M) log(N + M))`. The selected strategy is available as
+`plan.method`. Reusing a plan also reuses its direct matrix or the FFT of its
+Bluestein convolution kernel.
 
 ## Installation
 

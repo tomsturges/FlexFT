@@ -101,6 +101,14 @@ def _as_pair(value: Any, *, name: str):
     return result
 
 
+def _frdft_costs(N: int, M: int) -> tuple[float, float]:
+    """Estimate direct and Bluestein evaluation costs in relative units."""
+    direct = float(N * M)
+    length = N + M
+    bluestein = 2.0 * length * math.log2(length) + N + M + length
+    return direct, bluestein
+
+
 class CenteredDFT:
     r"""Centered ordinary DFT operator.
 
@@ -281,17 +289,24 @@ class FlexFT:
     The grids are
 
     $$
-    \mathbf{x}[n] = x_0 + (n-c)\delta_x,
+    \mathbf{x}[n] = x_0 + (n-c_N)\delta_x,
     \qquad
-    \mathbf{k}[m] = k_0 + (m-c)\delta_k,
+    \mathbf{k}[m] = k_0 + (m-c_M)\delta_k,
     $$
 
-    where $c=\lfloor N/2\rfloor$.
+    where $c_N=\lfloor N/2\rfloor$ and $c_M=\lfloor M/2\rfloor$.
+
+    Flexible-grid plans select direct evaluation when its $NM$ cost estimate
+    does not exceed the estimate for two length-$(N+M)$ FFTs and their
+    pointwise operations. The selected implementation is exposed as
+    ``method``.
 
     Parameters
     ----------
     N
-        Positive input and output length.
+        Positive input length.
+    M
+        Positive output length. Defaults to ``N``.
     dx
         Positive direct-space spacing $\delta_x$.
     dk
@@ -307,8 +322,8 @@ class FlexFT:
         Construct a plan for the FFT-compatible grid using an ordinary DFT.
     """
 
-    def __init__(self, *, N, dx, dk, x0=0.0, k0=0.0):
-        self._configure(N=N, dx=dx, dk=dk, x0=x0, k0=k0, use_fft=False)
+    def __init__(self, *, N, dx, dk, M=None, x0=0.0, k0=0.0):
+        self._configure(N=N, M=M, dx=dx, dk=dk, x0=x0, k0=k0, use_fft=False)
 
     @classmethod
     def fft(cls, *, N, dx, x0=0.0, k0=0.0):
@@ -316,11 +331,12 @@ class FlexFT:
         The reciprocal-space spacing is set to ``1 / (N * dx)``.
         """
         plan = cls.__new__(cls)
-        plan._configure(N=N, dx=dx, dk=None, x0=x0, k0=k0, use_fft=True)
+        plan._configure(N=N, M=N, dx=dx, dk=None, x0=x0, k0=k0, use_fft=True)
         return plan
 
-    def _configure(self, *, N, dx, dk, x0, k0, use_fft):
+    def _configure(self, *, N, M, dx, dk, x0, k0, use_fft):
         self.N = _validate_positive_int(N)
+        self.M = self.N if M is None else _validate_positive_int(M, name="M")
         self.dx = _validate_spacing(dx, name="dx")
         self.x0 = _validate_finite_scalar(x0, name="x0")
         self.k0 = _validate_finite_scalar(k0, name="k0")
@@ -328,14 +344,26 @@ class FlexFT:
         if use_fft:
             self.dk = 1.0 / (self.N * self.dx)
             self.core = CenteredDFT()
+            self.method = "fft"
+            self.estimated_cost = self.N * math.log2(max(self.N, 2))
         else:
             self.dk = _validate_spacing(dk, name="dk")
-            self.core = CenteredFRDFT(self.N, self.dx * self.dk)
+            direct_cost, bluestein_cost = _frdft_costs(self.N, self.M)
+            if direct_cost <= bluestein_cost:
+                self.core = CenteredDirectFRDFT(
+                    self.N, self.dx * self.dk, M=self.M
+                )
+                self.method = "direct"
+                self.estimated_cost = direct_cost
+            else:
+                self.core = CenteredFRDFT(self.N, self.dx * self.dk, M=self.M)
+                self.method = "bluestein"
+                self.estimated_cost = bluestein_cost
 
-        c = self.N // 2
         n = np.arange(self.N, dtype=np.float64)
-        x = (n - c) * self.dx
-        k = (n - c) * self.dk
+        m = np.arange(self.M, dtype=np.float64)
+        x = (n - self.N // 2) * self.dx
+        k = (m - self.M // 2) * self.dk
         self.pre = 1.0 if self.k0 == 0 else _unit_phase(-self.k0 * x)
         self.post = 1.0 if self.x0 == 0 else _unit_phase(-self.x0 * (k + self.k0))
 
@@ -345,12 +373,12 @@ class FlexFT:
         return self.dx * self.post * self.core(self.pre * f)
 
 
-def flexft(f, *, dx, dk, x0=0.0, k0=0.0):
+def flexft(f, *, dx, dk, M=None, x0=0.0, k0=0.0):
     """Apply a forward FlexFT without explicitly constructing a reusable plan."""
     f = jnp.asarray(f)
     if f.ndim != 1:
         raise ValueError(f"f must be one-dimensional, got shape {tuple(f.shape)}.")
-    return FlexFT(N=f.shape[0], dx=dx, dk=dk, x0=x0, k0=k0)(f)
+    return FlexFT(N=f.shape[0], M=M, dx=dx, dk=dk, x0=x0, k0=k0)(f)
 
 
 class IFlexFT:
@@ -368,7 +396,9 @@ class IFlexFT:
     Parameters
     ----------
     N
-        Positive input and output length.
+        Positive input length.
+    M
+        Positive output length. Defaults to ``N``.
     dk
         Positive reciprocal-space spacing $\delta_k$.
     dx
@@ -384,18 +414,19 @@ class IFlexFT:
         Construct a plan for the FFT-compatible grid using an ordinary DFT.
     """
 
-    def __init__(self, *, N, dk, dx, x0=0.0, k0=0.0):
-        self._configure(N=N, dk=dk, dx=dx, x0=x0, k0=k0, use_fft=False)
+    def __init__(self, *, N, dk, dx, M=None, x0=0.0, k0=0.0):
+        self._configure(N=N, M=M, dk=dk, dx=dx, x0=x0, k0=k0, use_fft=False)
 
     @classmethod
     def fft(cls, *, N, dk, x0=0.0, k0=0.0):
         """Construct an ordinary-FFT inverse plan on the compatible grid."""
         plan = cls.__new__(cls)
-        plan._configure(N=N, dk=dk, dx=None, x0=x0, k0=k0, use_fft=True)
+        plan._configure(N=N, M=N, dk=dk, dx=None, x0=x0, k0=k0, use_fft=True)
         return plan
 
-    def _configure(self, *, N, dk, dx, x0, k0, use_fft):
+    def _configure(self, *, N, M, dk, dx, x0, k0, use_fft):
         self.N = _validate_positive_int(N)
+        self.M = self.N if M is None else _validate_positive_int(M, name="M")
         self.dk = _validate_spacing(dk, name="dk")
         self.x0 = _validate_finite_scalar(x0, name="x0")
         self.k0 = _validate_finite_scalar(k0, name="k0")
@@ -408,12 +439,15 @@ class IFlexFT:
             requested_dx = _validate_spacing(dx, name="dx")
             self.forward_like = FlexFT(
                 N=self.N,
+                M=self.M,
                 dx=self.dk,
                 dk=requested_dx,
                 x0=self.k0,
                 k0=self.x0,
             )
         self.dx = self.forward_like.dk
+        self.method = self.forward_like.method
+        self.estimated_cost = self.forward_like.estimated_cost
 
     def __call__(self, F):
         """Inverse-transform samples ``F`` with shape ``(N,)``."""
@@ -421,12 +455,12 @@ class IFlexFT:
         return jnp.conj(self.forward_like(jnp.conj(F)))
 
 
-def iflexft(F, *, dk, dx, x0=0.0, k0=0.0):
+def iflexft(F, *, dk, dx, M=None, x0=0.0, k0=0.0):
     """Apply an inverse FlexFT without constructing a reusable plan."""
     F = jnp.asarray(F)
     if F.ndim != 1:
         raise ValueError(f"F must be one-dimensional, got shape {tuple(F.shape)}.")
-    return IFlexFT(N=F.shape[0], dk=dk, dx=dx, x0=x0, k0=k0)(F)
+    return IFlexFT(N=F.shape[0], M=M, dk=dk, dx=dx, x0=x0, k0=k0)(F)
 
 
 class FlexFT2D:
@@ -434,13 +468,15 @@ class FlexFT2D:
 
     ``dx`` contains the direct-space spacings and ``dk`` contains the
     reciprocal-space spacings. Each grid argument may be a scalar, which is
-    applied to both axes, or an axis-specific pair. The transform is applied
-    separably along axis 0 and then axis 1.
+    applied to both axes, or an axis-specific pair. ``N`` and ``M`` are the
+    input and output shapes. The transform is applied separably in the cheaper
+    of the two possible axis orders.
     """
 
-    def __init__(self, *, N, dx, dk, x0=0.0, k0=0.0):
+    def __init__(self, *, N, dx, dk, M=None, x0=0.0, k0=0.0):
         self._configure(
             N=N,
+            M=M,
             dx=dx,
             dk=dk,
             x0=x0,
@@ -454,6 +490,7 @@ class FlexFT2D:
         plan = cls.__new__(cls)
         plan._configure(
             N=N,
+            M=N,
             dx=dx,
             dk=None,
             x0=x0,
@@ -462,8 +499,9 @@ class FlexFT2D:
         )
         return plan
 
-    def _configure(self, *, N, dx, dk, x0, k0, use_fft):
+    def _configure(self, *, N, M, dx, dk, x0, k0, use_fft):
         N1, N2 = _as_pair(N, name="N")
+        M1, M2 = (N1, N2) if M is None else _as_pair(M, name="M")
         dx1, dx2 = _as_pair(dx, name="dx")
         x01, x02 = _as_pair(x0, name="x0")
         k01, k02 = _as_pair(k0, name="k0")
@@ -472,37 +510,59 @@ class FlexFT2D:
             _validate_positive_int(N1, name="N[0]"),
             _validate_positive_int(N2, name="N[1]"),
         )
+        self.M = (
+            _validate_positive_int(M1, name="M[0]"),
+            _validate_positive_int(M2, name="M[1]"),
+        )
         if use_fft:
             self.op1 = FlexFT.fft(N=self.N[0], dx=dx1, x0=x01, k0=k01)
             self.op2 = FlexFT.fft(N=self.N[1], dx=dx2, x0=x02, k0=k02)
         else:
             dk1, dk2 = _as_pair(dk, name="dk")
             self.op1 = FlexFT(
-                N=self.N[0], dx=dx1, dk=dk1, x0=x01, k0=k01
+                N=self.N[0], M=self.M[0], dx=dx1, dk=dk1, x0=x01, k0=k01
             )
             self.op2 = FlexFT(
-                N=self.N[1], dx=dx2, dk=dk2, x0=x02, k0=k02
+                N=self.N[1], M=self.M[1], dx=dx2, dk=dk2, x0=x02, k0=k02
             )
 
         self.dx = (self.op1.dx, self.op2.dx)
         self.dk = (self.op1.dk, self.op2.dk)
         self.x0 = (self.op1.x0, self.op2.x0)
         self.k0 = (self.op1.k0, self.op2.k0)
+        self.method = (self.op1.method, self.op2.method)
 
         self._op1_vm = jax.vmap(self.op1, in_axes=1, out_axes=1)
         self._op2_vm = jax.vmap(self.op2, in_axes=0, out_axes=0)
 
+        cost_01 = (
+            self.N[1] * self.op1.estimated_cost
+            + self.M[0] * self.op2.estimated_cost
+        )
+        cost_10 = (
+            self.N[0] * self.op2.estimated_cost
+            + self.M[1] * self.op1.estimated_cost
+        )
+        if cost_01 <= cost_10:
+            self.axis_order = (0, 1)
+            self.estimated_cost = cost_01
+        else:
+            self.axis_order = (1, 0)
+            self.estimated_cost = cost_10
+
     def __call__(self, f):
         f = _as_matrix(f, shape=self.N, name="f")
-        return self._op2_vm(self._op1_vm(f))
+        if self.axis_order == (0, 1):
+            return self._op2_vm(self._op1_vm(f))
+        return self._op1_vm(self._op2_vm(f))
 
 
-def flexft2d(f, *, dx, dk, x0=0.0, k0=0.0):
+def flexft2d(f, *, dx, dk, M=None, x0=0.0, k0=0.0):
     """Apply a 2D forward FlexFT without constructing a reusable plan."""
     f = jnp.asarray(f)
     if f.ndim != 2:
         raise ValueError(f"f must be two-dimensional, got shape {tuple(f.shape)}.")
-    return FlexFT2D(N=f.shape, dx=dx, dk=dk, x0=x0, k0=k0)(f)
+    return FlexFT2D(N=f.shape, M=M, dx=dx, dk=dk, x0=x0, k0=k0)(f)
 
 
 class IFlexFT2D:
@@ -510,21 +570,23 @@ class IFlexFT2D:
 
     ``dk`` contains the reciprocal-space spacings and ``dx`` contains the
     direct-space spacings. Each grid argument may be a scalar, which is applied
-    to both axes, or an axis-specific pair.
+    to both axes, or an axis-specific pair. ``N`` and ``M`` are the input and
+    output shapes.
     """
 
-    def __init__(self, *, N, dk, dx, x0=0.0, k0=0.0):
-        self._configure(N=N, dk=dk, dx=dx, x0=x0, k0=k0, use_fft=False)
+    def __init__(self, *, N, dk, dx, M=None, x0=0.0, k0=0.0):
+        self._configure(N=N, M=M, dk=dk, dx=dx, x0=x0, k0=k0, use_fft=False)
 
     @classmethod
     def fft(cls, *, N, dk, x0=0.0, k0=0.0):
         """Construct an ordinary-FFT inverse plan on both compatible axes."""
         plan = cls.__new__(cls)
-        plan._configure(N=N, dk=dk, dx=None, x0=x0, k0=k0, use_fft=True)
+        plan._configure(N=N, M=N, dk=dk, dx=None, x0=x0, k0=k0, use_fft=True)
         return plan
 
-    def _configure(self, *, N, dk, dx, x0, k0, use_fft):
+    def _configure(self, *, N, M, dk, dx, x0, k0, use_fft):
         N_pair = _as_pair(N, name="N")
+        M_pair = N_pair if M is None else _as_pair(M, name="M")
         dk_pair = _as_pair(dk, name="dk")
         x0_pair = _as_pair(x0, name="x0")
         k0_pair = _as_pair(k0, name="k0")
@@ -537,6 +599,7 @@ class IFlexFT2D:
             dx_pair = _as_pair(dx, name="dx")
             self.forward_like = FlexFT2D(
                 N=N_pair,
+                M=M_pair,
                 dx=dk_pair,
                 dk=dx_pair,
                 x0=k0_pair,
@@ -544,19 +607,23 @@ class IFlexFT2D:
             )
 
         self.N = self.forward_like.N
+        self.M = self.forward_like.M
         self.dk = self.forward_like.dx
         self.dx = self.forward_like.dk
         self.x0 = self.forward_like.k0
         self.k0 = self.forward_like.x0
+        self.method = self.forward_like.method
+        self.axis_order = self.forward_like.axis_order
+        self.estimated_cost = self.forward_like.estimated_cost
 
     def __call__(self, F):
         F = _as_matrix(F, shape=self.N, name="F")
         return jnp.conj(self.forward_like(jnp.conj(F)))
 
 
-def iflexft2d(F, *, dk, dx, x0=0.0, k0=0.0):
+def iflexft2d(F, *, dk, dx, M=None, x0=0.0, k0=0.0):
     """Apply a 2D inverse FlexFT without constructing a reusable plan."""
     F = jnp.asarray(F)
     if F.ndim != 2:
         raise ValueError(f"F must be two-dimensional, got shape {tuple(F.shape)}.")
-    return IFlexFT2D(N=F.shape, dk=dk, dx=dx, x0=x0, k0=k0)(F)
+    return IFlexFT2D(N=F.shape, M=M, dk=dk, dx=dx, x0=x0, k0=k0)(F)

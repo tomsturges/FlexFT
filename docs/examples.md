@@ -1,7 +1,8 @@
 # Examples
 
-All one-dimensional functions accept or return arrays of shape `(N,)`. The grid
-parameters always have the same meaning:
+One-dimensional transforms accept arrays of shape `(N,)` and return arrays of
+shape `(M,)`; `M` defaults to `N`. The grid parameters always have the same
+meaning:
 
 - `dx`: direct-space spacing
 - `dk`: reciprocal-space spacing
@@ -24,6 +25,15 @@ F = flexft(f, dx=dx, dk=dk)
 k = (jnp.arange(N) - N // 2) * dk
 ```
 
+Request fewer output samples without changing `dk` by specifying `M`. The
+output remains centred on `k0`:
+
+```python
+M = 9
+F_region = flexft(f, dx=dx, dk=dk, M=M, k0=0.4)
+k_region = 0.4 + (jnp.arange(M) - M // 2) * dk
+```
+
 The forward transform requires an explicit `dk`. To use the FFT-compatible
 grid and centered ordinary DFT path explicitly, construct an FFT plan:
 
@@ -36,16 +46,17 @@ F_fft = fft_transform(f)
 
 ## Reusing a transform plan
 
-Constructing `FlexFT` precomputes grid phases and, for a non-FFT-compatible
-spacing, the FFT of the convolution kernel. Reuse the object when transforming
-many arrays on the same grids.
+Constructing `FlexFT` precomputes grid phases and either a direct matrix or the
+FFT of a convolution kernel. Reuse the object when transforming many arrays on
+the same grids.
 
 ```python
 from flexft import FlexFT
 
-transform = FlexFT(N=N, dx=dx, dk=dk)
+transform = FlexFT(N=N, M=32, dx=dx, dk=dk)
 F1 = transform(f)
 F2 = transform(2 * f)
+print(transform.method)  # "direct" or "bluestein"
 ```
 
 ## Inverse transform
@@ -55,7 +66,7 @@ The inverse transform requires both `dk` and `dx`.
 ```python
 from flexft import iflexft
 
-f_inverse_approximation = iflexft(F, dk=dk, dx=dx)
+f_inverse_approximation = iflexft(F, dk=dk, dx=dx, M=N)
 ```
 
 Use the class factory for the FFT-compatible spacing and ordinary inverse DFT:
@@ -99,6 +110,23 @@ f2 = jnp.exp(-(x1[:, None] ** 2 + x2[None, :] ** 2))
 
 F2 = flexft2d(f2, dx=dx2, dk=dk2)
 f2_inverse_approximation = iflexft2d(F2, dk=dk2, dx=dx2)
+```
+
+An axis-specific output shape enables hybrid plans. Here the first axis is
+reduced directly before the remaining transform is evaluated:
+
+```python
+from flexft import FlexFT2D
+
+slice_transform = FlexFT2D(
+    N=shape,
+    M=(1, shape[1]),
+    dx=dx2,
+    dk=dk2,
+)
+F2_slice = slice_transform(f2)
+print(slice_transform.method)      # for example ("direct", "bluestein")
+print(slice_transform.axis_order)  # (0, 1)
 ```
 
 Each 2D grid argument may be a pair ordered by array axis, as above, or a scalar
