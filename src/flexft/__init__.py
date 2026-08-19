@@ -1,4 +1,5 @@
 from .core import (
+    CenteredDirectFRDFT,
     CenteredFRDFT,
     CenteredDFT,
     FRDFT,
@@ -15,6 +16,7 @@ from .core import (
 
 __all__ = [
     "CenteredDFT",
+    "CenteredDirectFRDFT",
     "CenteredFRDFT",
     "FRDFT",
     "frdft",

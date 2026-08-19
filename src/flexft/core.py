@@ -221,6 +221,46 @@ class CenteredFRDFT:
         return self.post * self.frdft(self.pre * g)
 
 
+class CenteredDirectFRDFT:
+    r"""Directly evaluated centered fractional DFT operator.
+
+    This evaluates
+
+    $$
+    \sum_{n=0}^{N-1}
+    \mathbf g[n]
+    \exp\left[-i2\pi\alpha(m-c_M)(n-c_N)\right],
+    $$
+
+    for $0\leq m<M$, where $c_N=\lfloor N/2\rfloor$ and
+    $c_M=\lfloor M/2\rfloor$. The centered dense kernel is precomputed so no
+    additional centering phases are applied at runtime.
+
+    Parameters
+    ----------
+    N
+        Input length. Must be a positive integer.
+    alpha
+        Finite fractionality parameter $\alpha$.
+    M
+        Output length. Must be a positive integer. Defaults to ``N``.
+    """
+
+    def __init__(self, N, alpha, M=None):
+        self.N = _validate_positive_int(N)
+        self.M = self.N if M is None else _validate_positive_int(M, name="M")
+        self.alpha = _validate_finite_scalar(alpha, name="alpha")
+
+        n = np.arange(self.N, dtype=np.float64) - self.N // 2
+        m = np.arange(self.M, dtype=np.float64) - self.M // 2
+        self.kernel = _unit_phase(-self.alpha * np.outer(m, n))
+
+    def __call__(self, g):
+        """Transform a vector of length ``N`` into one of length ``M``."""
+        g = _as_vector(g, length=self.N, name="g")
+        return self.kernel @ g
+
+
 def frdft(g, alpha, M=None):
     """Apply an ``N``-to-``M`` fractional DFT without constructing a plan."""
     g = jnp.asarray(g)

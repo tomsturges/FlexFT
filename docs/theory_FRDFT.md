@@ -17,6 +17,20 @@ Here $N$ is the number of input samples and $M$ is the independently chosen
 number of output samples. The implementation uses $M=N$ when no output length
 is specified.
 
+## Direct evaluation
+
+The definition can be evaluated directly by precomputing the dense matrix
+
+$$
+\v{A}_\alpha[m,n] = \exp(-i2\pi\alpha mn)
+$$
+
+and calculating $\v{G}_\alpha=\v{A}_\alpha\v{g}$. Both the runtime and the
+matrix storage scale as $O(NM)$. This is advantageous when $M$ is small, while
+the FFT-based method below is preferable for larger output grids.
+
+## Evaluation with Bluestein's algorithm
+
 We can rewrite this expression in terms of FFTs, starting by using the Bluestein trick [@Bluestein1970] which is related to the chirp-$z$ transform. Using the identity $2mn = m^2 + n^2 - (m - n)^2$ we can factor the exponent into 
 
 $$
