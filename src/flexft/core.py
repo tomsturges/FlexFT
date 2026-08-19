@@ -138,17 +138,21 @@ class FRDFT:
     \mathbf g[n]\exp(-i2\pi\alpha mn).
     $$
 
-    The ordinary DFT is recovered when $\alpha=1/N$. The transform is evaluated
-    using the Bailey--Swarztrauber/Bluestein chirp-convolution algorithm.
-    Constructing an ``FRDFT`` precomputes the chirps and convolution kernel so the
-    operator can be reused with different vectors of the same length.
+    The output index runs from $0$ to $M-1$, where $M=N$ by default. The
+    ordinary DFT is recovered when $M=N$ and $\alpha=1/N$. The transform is
+    evaluated using the Bailey--Swarztrauber/Bluestein chirp-convolution
+    algorithm. Constructing an ``FRDFT`` precomputes the chirps and convolution
+    kernel so the operator can be reused with different vectors of the same
+    input length.
 
     Parameters
     ----------
     N
-        Length of the input and output vectors. Must be a positive integer.
+        Input length. Must be a positive integer.
     alpha
         Finite fractionality parameter $\alpha$.
+    M
+        Output length. Must be a positive integer. Defaults to ``N``.
 
     See Also
     --------
@@ -156,24 +160,31 @@ class FRDFT:
         One-shot convenience function.
     """
 
-    def __init__(self, N, alpha):
+    def __init__(self, N, alpha, M=None):
         self.N = _validate_positive_int(N)
+        self.M = self.N if M is None else _validate_positive_int(M, name="M")
+        self.L = self.N + self.M
         self.alpha = _validate_finite_scalar(alpha, name="alpha")
         # Float64 avoids int32 overflow in n**2 once n exceeds 46,340.
         n = np.arange(self.N, dtype=np.float64)
+        m = np.arange(self.M, dtype=np.float64)
         # exp(i*pi*alpha*n**2) = exp(i*2*pi*(alpha/2)*n**2).
-        theta = _unit_phase(0.5 * self.alpha * n**2)
+        theta_input = _unit_phase(0.5 * self.alpha * n**2)
+        theta_output = _unit_phase(0.5 * self.alpha * m**2)
         theta_negative = _unit_phase(0.5 * self.alpha * (n - self.N) ** 2)
 
-        self.ThetaStar = jnp.conjugate(theta)
-        self.Zfft = fft(jnp.concatenate((theta, theta_negative)))
+        self.ThetaStarInput = jnp.conjugate(theta_input)
+        self.ThetaStarOutput = jnp.conjugate(theta_output)
+        # Retain the original name as an alias for the input chirp.
+        self.ThetaStar = self.ThetaStarInput
+        self.Zfft = fft(jnp.concatenate((theta_output, theta_negative)))
 
     def __call__(self, g):
-        """Apply the fractional DFT to a vector of length ``N``."""
+        """Transform a vector of length ``N`` into one of length ``M``."""
         g = _as_vector(g, length=self.N, name="g")
-        Y = jnp.pad(g * self.ThetaStar, (0, self.N))
-        conv = ifft(fft(Y) * self.Zfft)[: self.N]
-        return self.ThetaStar * conv
+        Y = jnp.pad(g * self.ThetaStarInput, (0, self.M))
+        conv = ifft(fft(Y) * self.Zfft)[: self.M]
+        return self.ThetaStarOutput * conv
 
 
 class CenteredFRDFT:
@@ -184,34 +195,38 @@ class CenteredFRDFT:
     $$
     \sum_{n=0}^{N-1}
     \mathbf g[n]
-    \exp\left[-i2\pi\alpha(m-c)(n-c)\right],
+    \exp\left[-i2\pi\alpha(m-c_M)(n-c_N)\right],
     $$
 
-    where $c=\lfloor N/2\rfloor$.
+    for $0\leq m<M$, where $c_N=\lfloor N/2\rfloor$ and
+    $c_M=\lfloor M/2\rfloor$. The output length defaults to the input length.
     """
 
-    def __init__(self, N, alpha):
+    def __init__(self, N, alpha, M=None):
         self.N = _validate_positive_int(N)
+        self.M = self.N if M is None else _validate_positive_int(M, name="M")
         self.alpha = _validate_finite_scalar(alpha, name="alpha")
 
         n = np.arange(self.N, dtype=np.float64)
-        c = self.N // 2
-        self.pre = _unit_phase(self.alpha * c * n)
-        self.post = _unit_phase(self.alpha * (c * n - c**2))
-        self.frdft = FRDFT(self.N, self.alpha)
+        m = np.arange(self.M, dtype=np.float64)
+        c_N = self.N // 2
+        c_M = self.M // 2
+        self.pre = _unit_phase(self.alpha * c_M * n)
+        self.post = _unit_phase(self.alpha * (c_N * m - c_M * c_N))
+        self.frdft = FRDFT(self.N, self.alpha, M=self.M)
 
     def __call__(self, g):
-        """Apply the centered fractional DFT to a vector of length ``N``."""
+        """Transform a vector of length ``N`` into one of length ``M``."""
         g = _as_vector(g, length=self.N, name="g")
         return self.post * self.frdft(self.pre * g)
 
 
-def frdft(g, alpha):
-    """Apply a fractional DFT without explicitly constructing a reusable plan."""
+def frdft(g, alpha, M=None):
+    """Apply an ``N``-to-``M`` fractional DFT without constructing a plan."""
     g = jnp.asarray(g)
     if g.ndim != 1:
         raise ValueError(f"g must be one-dimensional, got shape {tuple(g.shape)}.")
-    return FRDFT(g.shape[0], alpha)(g)
+    return FRDFT(g.shape[0], alpha, M=M)(g)
 
 
 class FlexFT:
