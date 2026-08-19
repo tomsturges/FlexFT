@@ -45,7 +45,7 @@ The quick-start plot below also uses Matplotlib.
 ```python
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
-from flexft import flexft
+from flexft import FlexFT, flexft
 
 N = 512
 dx = 0.04
@@ -71,9 +71,10 @@ fig.savefig("docs/assets/readme-quick-start.png", dpi=200)
 
 ![FlexFT approximation compared with the exact Gaussian transform](https://raw.githubusercontent.com/tomsturges/FlexFT/v0.1.1/docs/assets/readme-quick-start.png)
 
-Omit `dk` in the forward transform to use the FFT-compatible spacing
-`1 / (N * dx)`. Conversely, omit `dx` in the inverse transform to use
-`1 / (N * dk)`.
+The forward transform requires an explicit `dk`. To use the FFT-compatible
+spacing `1 / (N * dx)` and the ordinary FFT implementation, construct a plan
+with `FlexFT.fft(N=N, dx=dx)`. The inverse transform likewise requires `dx`;
+use `IFlexFT.fft(N=N, dk=dk)` for its ordinary-FFT path.
 
 For repeated transforms with unchanged grids, construct and reuse `FlexFT` or
 `IFlexFT`; this reuses the precomputed convolution kernel.

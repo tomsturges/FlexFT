@@ -24,7 +24,15 @@ F = flexft(f, dx=dx, dk=dk)
 k = (jnp.arange(N) - N // 2) * dk
 ```
 
-Omit `dk` to use `dk = 1 / (N * dx)` and the centered ordinary DFT path.
+The forward transform requires an explicit `dk`. To use the FFT-compatible
+grid and centered ordinary DFT path explicitly, construct an FFT plan:
+
+```python
+from flexft import FlexFT
+
+fft_transform = FlexFT.fft(N=N, dx=dx)
+F_fft = fft_transform(f)
+```
 
 ## Reusing a transform plan
 
@@ -42,13 +50,21 @@ F2 = transform(2 * f)
 
 ## Inverse transform
 
-The inverse transform always requires `dk`. It optionally accepts `dx`; if it is
-omitted, `dx = 1 / (N * dk)` is used.
+The inverse transform requires both `dk` and `dx`.
 
 ```python
 from flexft import iflexft
 
 f_inverse_approximation = iflexft(F, dk=dk, dx=dx)
+```
+
+Use the class factory for the FFT-compatible spacing and ordinary inverse DFT:
+
+```python
+from flexft import IFlexFT
+
+inverse_fft_transform = IFlexFT.fft(N=N, dk=dk)
+f_fft_inverse = inverse_fft_transform(F)
 ```
 
 For independently chosen spacings, forward and inverse calls are quadrature
@@ -91,6 +107,26 @@ can be written as:
 
 ```python
 F2 = flexft2d(f2_square, dx=0.05, dk=0.02)
+```
+
+As in one dimension, the one-shot transform requires `dk`. Use the class
+factory explicitly for an ordinary 2D FFT on the compatible grid:
+
+```python
+from flexft import FlexFT2D
+
+fft_transform_2d = FlexFT2D.fft(N=shape, dx=dx2)
+F2_fft = fft_transform_2d(f2)
+```
+
+The inverse 2D one-shot function also requires both spacings. Its ordinary-FFT
+path is available through the corresponding class factory:
+
+```python
+from flexft import IFlexFT2D
+
+inverse_fft_transform_2d = IFlexFT2D.fft(N=shape, dk=dk2)
+f2_fft_inverse = inverse_fft_transform_2d(F2)
 ```
 
 ## Precision
