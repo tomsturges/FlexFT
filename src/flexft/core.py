@@ -324,7 +324,7 @@ class FlexFT:
         Positive direct-space spacing $\delta_x$.
     dk
         Positive reciprocal-space spacing $\delta_k$. Required for ``direct``
-        and ``bluestein``; must be omitted for ``fft``.
+        and ``bluestein``; must be ``None`` for ``fft``.
     method
         Evaluation method: ``"bluestein"``, ``"direct"``, or ``"fft"``.
         Defaults to ``"bluestein"``.
@@ -340,7 +340,7 @@ class FlexFT:
         *,
         N,
         dx,
-        dk=None,
+        dk,
         M=None,
         method="bluestein",
         x0=0.0,
@@ -355,7 +355,7 @@ class FlexFT:
 
         if self.method == "fft":
             if dk is not None:
-                raise ValueError("dk must be omitted when method='fft'.")
+                raise ValueError("dk must be None when method='fft'.")
             if self.M != self.N:
                 raise ValueError("method='fft' requires M to equal N.")
             self.dk = 1.0 / (self.N * self.dx)
@@ -384,9 +384,7 @@ class FlexFT:
         return self.dx * self.post * self.core(self.pre * f)
 
 
-def flexft(
-    f, *, dx, dk=None, M=None, method="bluestein", x0=0.0, k0=0.0
-):
+def flexft(f, *, dx, dk, M=None, method="bluestein", x0=0.0, k0=0.0):
     """Apply a forward FlexFT without explicitly constructing a reusable plan."""
     f = jnp.asarray(f)
     if f.ndim != 1:
@@ -418,7 +416,7 @@ class IFlexFT:
         Positive reciprocal-space spacing $\delta_k$.
     dx
         Positive direct-space spacing $\delta_x$. Required for ``direct`` and
-        ``bluestein``; must be omitted for ``fft``.
+        ``bluestein``; must be ``None`` for ``fft``.
     method
         Evaluation method: ``"bluestein"``, ``"direct"``, or ``"fft"``.
         Defaults to ``"bluestein"``.
@@ -434,7 +432,7 @@ class IFlexFT:
         *,
         N,
         dk,
-        dx=None,
+        dx,
         M=None,
         method="bluestein",
         x0=0.0,
@@ -449,7 +447,7 @@ class IFlexFT:
 
         if self.method == "fft":
             if dx is not None:
-                raise ValueError("dx must be omitted when method='fft'.")
+                raise ValueError("dx must be None when method='fft'.")
         else:
             if dx is None:
                 raise ValueError(f"dx is required when method={self.method!r}.")
@@ -471,9 +469,7 @@ class IFlexFT:
         return jnp.conj(self.forward_like(jnp.conj(F)))
 
 
-def iflexft(
-    F, *, dk, dx=None, M=None, method="bluestein", x0=0.0, k0=0.0
-):
+def iflexft(F, *, dk, dx, M=None, method="bluestein", x0=0.0, k0=0.0):
     """Apply an inverse FlexFT without constructing a reusable plan."""
     F = jnp.asarray(F)
     if F.ndim != 1:
@@ -490,8 +486,9 @@ class FlexFT2D:
     reciprocal-space spacings. Each grid argument may be a scalar, which is
     applied to both axes, or an axis-specific pair. ``N`` and ``M`` are the
     input and output shapes. ``method`` may be one method for both axes or an
-    axis-specific pair. The axis with the greater output compression is
-    evaluated first.
+    axis-specific pair. ``dk`` is always explicit: use ``None`` for an FFT
+    axis and a positive spacing for either flexible method. The axis with the
+    greater output compression is evaluated first.
     """
 
     def __init__(
@@ -499,7 +496,7 @@ class FlexFT2D:
         *,
         N,
         dx,
-        dk=None,
+        dk,
         M=None,
         method="bluestein",
         x0=0.0,
@@ -529,7 +526,7 @@ class FlexFT2D:
         for axis, (axis_method, axis_dk) in enumerate(zip(methods, spacings)):
             if axis_method == "fft" and axis_dk is not None:
                 raise ValueError(
-                    f"dk[{axis}] must be omitted when method[{axis}]='fft'."
+                    f"dk[{axis}] must be None when method[{axis}]='fft'."
                 )
             if axis_method != "fft" and axis_dk is None:
                 raise ValueError(
@@ -580,9 +577,7 @@ class FlexFT2D:
         return self._op1_vm(self._op2_vm(f))
 
 
-def flexft2d(
-    f, *, dx, dk=None, M=None, method="bluestein", x0=0.0, k0=0.0
-):
+def flexft2d(f, *, dx, dk, M=None, method="bluestein", x0=0.0, k0=0.0):
     """Apply a 2D forward FlexFT without constructing a reusable plan."""
     f = jnp.asarray(f)
     if f.ndim != 2:
@@ -598,7 +593,8 @@ class IFlexFT2D:
     ``dk`` contains the reciprocal-space spacings and ``dx`` contains the
     direct-space spacings. Each grid argument may be a scalar, which is applied
     to both axes, or an axis-specific pair. ``N`` and ``M`` are the input and
-    output shapes.
+    output shapes. ``dx`` is always explicit: use ``None`` for an FFT axis and
+    a positive spacing for either flexible method.
     """
 
     def __init__(
@@ -606,7 +602,7 @@ class IFlexFT2D:
         *,
         N,
         dk,
-        dx=None,
+        dx,
         M=None,
         method="bluestein",
         x0=0.0,
@@ -627,7 +623,7 @@ class IFlexFT2D:
         for axis, (axis_method, axis_dx) in enumerate(zip(methods, dx_pair)):
             if axis_method == "fft" and axis_dx is not None:
                 raise ValueError(
-                    f"dx[{axis}] must be omitted when method[{axis}]='fft'."
+                    f"dx[{axis}] must be None when method[{axis}]='fft'."
                 )
             if axis_method != "fft" and axis_dx is None:
                 raise ValueError(
@@ -658,9 +654,7 @@ class IFlexFT2D:
         return jnp.conj(self.forward_like(jnp.conj(F)))
 
 
-def iflexft2d(
-    F, *, dk, dx=None, M=None, method="bluestein", x0=0.0, k0=0.0
-):
+def iflexft2d(F, *, dk, dx, M=None, method="bluestein", x0=0.0, k0=0.0):
     """Apply a 2D inverse FlexFT without constructing a reusable plan."""
     F = jnp.asarray(F)
     if F.ndim != 2:

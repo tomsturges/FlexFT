@@ -40,12 +40,12 @@ k_region = 0.4 + (jnp.arange(M) - M // 2) * dk
 ```
 
 The flexible methods require an explicit `dk`. To use the FFT-compatible grid
-and centered ordinary DFT path, select it explicitly and omit `dk`:
+and centered ordinary DFT path, select it explicitly and pass `dk=None`:
 
 ```python
 from flexft import FlexFT
 
-fft_transform = FlexFT(N=N, dx=dx, method="fft")
+fft_transform = FlexFT(N=N, dx=dx, dk=None, method="fft")
 F_fft = fft_transform(f)
 ```
 
@@ -73,12 +73,12 @@ from flexft import iflexft
 f_inverse_approximation = iflexft(F, dk=dk, dx=dx, M=N)
 ```
 
-Select the ordinary inverse DFT explicitly and omit `dx`:
+Select the ordinary inverse DFT explicitly and pass `dx=None`:
 
 ```python
 from flexft import IFlexFT
 
-inverse_fft_transform = IFlexFT(N=N, dk=dk, method="fft")
+inverse_fft_transform = IFlexFT(N=N, dk=dk, dx=None, method="fft")
 f_fft_inverse = inverse_fft_transform(F)
 ```
 
@@ -142,22 +142,24 @@ F2 = flexft2d(f2_square, dx=0.05, dk=0.02)
 ```
 
 As in one dimension, flexible methods require `dk`. Select an ordinary 2D FFT
-explicitly and omit `dk`:
+explicitly and pass `dk=None`:
 
 ```python
 from flexft import FlexFT2D
 
-fft_transform_2d = FlexFT2D(N=shape, dx=dx2, method="fft")
+fft_transform_2d = FlexFT2D(N=shape, dx=dx2, dk=None, method="fft")
 F2_fft = fft_transform_2d(f2)
 ```
 
 The inverse 2D flexible methods require both spacings. For the ordinary-FFT
-path, select it explicitly and omit `dx`:
+path, select it explicitly and pass `dx=None`:
 
 ```python
 from flexft import IFlexFT2D
 
-inverse_fft_transform_2d = IFlexFT2D(N=shape, dk=dk2, method="fft")
+inverse_fft_transform_2d = IFlexFT2D(
+    N=shape, dk=dk2, dx=None, method="fft"
+)
 f2_fft_inverse = inverse_fft_transform_2d(F2)
 ```
 

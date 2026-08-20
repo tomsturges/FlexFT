@@ -67,9 +67,9 @@ fig.savefig("docs/assets/readme-quick-start.png", dpi=200)
 ![FlexFT approximation compared with the exact Gaussian transform](https://raw.githubusercontent.com/tomsturges/FlexFT/v0.1.1/docs/assets/readme-quick-start.png)
 
 The default `method="bluestein"` and `method="direct"` require an explicit
-`dk`. For an ordinary FFT, use `method="fft"` and omit `dk`; the compatible
+`dk`. For an ordinary FFT, use `method="fft"` and pass `dk=None`; the compatible
 spacing `1 / (N * dx)` is then fixed by the input grid. The inverse API follows
-the same rule with `dx` as its conditionally omitted spacing.
+the same rule with an explicit `dx=None`.
 
 For repeated transforms with unchanged grids, construct and reuse `FlexFT` or
 `IFlexFT`; this reuses the precomputed direct matrix or convolution kernel.
