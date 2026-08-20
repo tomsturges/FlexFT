@@ -52,9 +52,9 @@ transform = FlexFT(
 )
 ```
 
-The helper never recommends `method="fft"`, because FFT evaluation fixes the
-output grid and is therefore a numerical choice rather than only a performance
-choice.
+The helper does not consider ordinary FFT evaluation, because an FFT fixes the
+output grid and is therefore a construction choice rather than only a
+performance choice. Use `FlexFT.fft(N=N, dx=dx)` for that constrained grid.
 
 ## Installation
 
@@ -95,10 +95,11 @@ fig.savefig("docs/assets/readme-quick-start.png", dpi=200)
 
 ![FlexFT approximation compared with the exact Gaussian transform](https://raw.githubusercontent.com/tomsturges/FlexFT/v0.1.1/docs/assets/readme-quick-start.png)
 
-The default `method="bluestein"` and `method="direct"` require an explicit
-`dk`. For an ordinary FFT, use `method="fft"` and pass `dk=None`; the compatible
-spacing `1 / (N * dx)` is then fixed by the input grid. The inverse API follows
-the same rule with an explicit `dx=None`.
+The flexible-grid constructor accepts `method="bluestein"` or
+`method="direct"` and requires an explicit `dk`. For an ordinary FFT, use
+`FlexFT.fft(N=N, dx=dx)`; its output length equals `N` and its spacing is fixed
+to `1 / (N * dx)`. The inverse API mirrors this with
+`IFlexFT.fft(N=N, dk=dk)`.
 
 For repeated transforms with unchanged grids, construct and reuse `FlexFT` or
 `IFlexFT`; this reuses the precomputed direct matrix or convolution kernel.

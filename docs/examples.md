@@ -11,8 +11,9 @@ meaning:
 
 The default `method="bluestein"` evaluates the flexible-grid sum through FFT
 convolution. `method="direct"` evaluates the same sum as a dense matrix-vector
-product. `method="fft"` selects the ordinary FFT, fixes `M=N`, and determines
-the output spacing from the input grid.
+product. Both methods evaluate the exact grid requested by the caller. The
+ordinary FFT is a separate construction path because it fixes `M=N` and
+derives the output spacing from the input grid.
 
 ## Recommending a flexible-grid method
 
@@ -63,9 +64,9 @@ otherwise it compares steady-state execution only. Results are cached within
 the process for identical configurations, and `cache=False` forces a fresh
 measurement.
 
-Only `"direct"` and `"bluestein"` are candidates. The helper never recommends
-`"fft"`, because selecting an FFT changes the allowable output grid rather than
-only its implementation.
+Only `"direct"` and `"bluestein"` are candidates. Ordinary FFT evaluation is
+constructed explicitly with `FlexFT.fft`, because it changes the allowable
+output grid rather than only its implementation.
 
 ## One-shot forward transform
 
@@ -92,15 +93,18 @@ F_region = flexft(f, dx=dx, dk=dk, M=M, k0=0.4)
 k_region = 0.4 + (jnp.arange(M) - M // 2) * dk
 ```
 
-The flexible methods require an explicit `dk`. To use the FFT-compatible grid
-and centered ordinary DFT path, select it explicitly and pass `dk=None`:
+The flexible constructor requires an explicit `dk`. To derive the compatible
+grid and use the centered ordinary FFT path, use the class factory:
 
 ```python
 from flexft import FlexFT
 
-fft_transform = FlexFT(N=N, dx=dx, dk=None, method="fft")
+fft_transform = FlexFT.fft(N=N, dx=dx)
 F_fft = fft_transform(f)
 ```
+
+`x0` and `k0` may also be supplied to the factory; only the output length and
+spacing are constrained by FFT compatibility.
 
 ## Reusing a transform plan
 
@@ -126,13 +130,14 @@ from flexft import iflexft
 f_inverse_approximation = iflexft(F, dk=dk, dx=dx, M=N)
 ```
 
-Select the ordinary inverse DFT explicitly and pass `dx=None`:
+Construct an ordinary inverse FFT and its compatible output grid with the
+corresponding factory:
 
 ```python
 from flexft import IFlexFT
 
-inverse_fft_transform = IFlexFT(N=N, dk=dk, dx=None, method="fft")
-f_fft_inverse = inverse_fft_transform(F)
+inverse_fft_transform = IFlexFT.fft(N=N, dk=fft_transform.dk)
+f_fft_inverse = inverse_fft_transform(F_fft)
 ```
 
 For independently chosen spacings, forward and inverse calls are quadrature
@@ -169,8 +174,8 @@ F2 = flexft2d(f2, dx=dx2, dk=dk2)
 f2_inverse_approximation = iflexft2d(F2, dk=dk2, dx=dx2)
 ```
 
-An axis-specific output shape enables hybrid plans. Here the first axis is
-reduced directly before the remaining transform is evaluated:
+An axis-specific output shape and method pair can reduce one axis directly
+before evaluating the remaining flexible transform:
 
 ```python
 from flexft import FlexFT2D
@@ -179,8 +184,8 @@ slice_transform = FlexFT2D(
     N=shape,
     M=(1, shape[1]),
     dx=dx2,
-    dk=(dk2[0], None),
-    method=("direct", "fft"),
+    dk=dk2,
+    method=("direct", "bluestein"),
 )
 F2_slice = slice_transform(f2)
 print(slice_transform.axis_order)  # (0, 1)
@@ -194,26 +199,24 @@ can be written as:
 F2 = flexft2d(f2_square, dx=0.05, dk=0.02)
 ```
 
-As in one dimension, flexible methods require `dk`. Select an ordinary 2D FFT
-explicitly and pass `dk=None`:
+As in one dimension, the flexible constructor requires `dk`. Construct an
+ordinary 2D FFT and derive both output spacings with the class factory:
 
 ```python
 from flexft import FlexFT2D
 
-fft_transform_2d = FlexFT2D(N=shape, dx=dx2, dk=None, method="fft")
+fft_transform_2d = FlexFT2D.fft(N=shape, dx=dx2)
 F2_fft = fft_transform_2d(f2)
 ```
 
-The inverse 2D flexible methods require both spacings. For the ordinary-FFT
-path, select it explicitly and pass `dx=None`:
+The inverse 2D flexible methods require both spacings. The ordinary inverse FFT
+has its own factory:
 
 ```python
 from flexft import IFlexFT2D
 
-inverse_fft_transform_2d = IFlexFT2D(
-    N=shape, dk=dk2, dx=None, method="fft"
-)
-f2_fft_inverse = inverse_fft_transform_2d(F2)
+inverse_fft_transform_2d = IFlexFT2D.fft(N=shape, dk=fft_transform_2d.dk)
+f2_fft_inverse = inverse_fft_transform_2d(F2_fft)
 ```
 
 ## Precision

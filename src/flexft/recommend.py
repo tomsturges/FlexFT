@@ -279,9 +279,9 @@ def recommend_method(
     the selected JAX device, synchronizing every call and reporting setup,
     compilation, and median execution times separately.
 
-    The recommendation never selects ``"fft"`` because FFT evaluation fixes
-    the output grid and is therefore a numerical choice rather than merely an
-    implementation choice.
+    The recommendation does not consider ordinary FFT evaluation because an
+    FFT fixes the output grid and is therefore a construction choice rather
+    than merely an implementation choice. Use ``FlexFT.fft`` for that grid.
 
     Estimate mode models direct execution as ``8 * batch_size * N * M`` work
     units and Bluestein execution as
