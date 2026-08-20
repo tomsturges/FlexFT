@@ -27,6 +27,35 @@ summation with cost `O(NM)`, while the default `method="bluestein"` uses a
 convolution of length `N + M` with cost `O((N + M) log(N + M))`. Reusing a plan
 also reuses its direct matrix or the FFT of its Bluestein convolution kernel.
 
+`recommend_method` can advise between these two numerically equivalent
+flexible-grid methods. Its default estimate is immediate; its opt-in benchmark
+mode measures synchronized JAX execution on the current platform:
+
+```python
+from flexft import FlexFT, recommend_method
+
+dx = 0.05
+dk = 0.002
+recommendation = recommend_method(
+    N=4096,
+    M=4,
+    mode="benchmark",
+    batch_size=128,
+    expected_calls=100,
+)
+transform = FlexFT(
+    N=4096,
+    M=4,
+    dx=dx,
+    dk=dk,
+    method=recommendation.method,
+)
+```
+
+The helper never recommends `method="fft"`, because FFT evaluation fixes the
+output grid and is therefore a numerical choice rather than only a performance
+choice.
+
 ## Installation
 
 ```bash

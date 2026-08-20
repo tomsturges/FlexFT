@@ -14,6 +14,59 @@ convolution. `method="direct"` evaluates the same sum as a dense matrix-vector
 product. `method="fft"` selects the ordinary FFT, fixes `M=N`, and determines
 the output spacing from the input grid.
 
+## Recommending a flexible-grid method
+
+Use `recommend_method` when the application should choose between direct and
+Bluestein evaluation without hiding that decision inside the transform:
+
+```python
+from flexft import FlexFT, recommend_method
+
+dx = 0.05
+dk = 0.002
+recommendation = recommend_method(N=4096, M=4)
+print(recommendation.method)
+print(recommendation.reason)
+
+transform = FlexFT(
+    N=4096,
+    M=4,
+    dx=dx,
+    dk=dk,
+    method=recommendation.method,
+)
+```
+
+The default `mode="estimate"` uses approximate work and memory estimates and
+does not execute a transform. For a recommendation calibrated to the active
+JAX platform, explicitly request a benchmark:
+
+```python
+recommendation = recommend_method(
+    N=4096,
+    M=4,
+    mode="benchmark",
+    batch_size=128,
+    expected_calls=100,
+    jit=True,
+)
+
+for method, result in recommendation.results.items():
+    print(method, result.execution_time, result.score)
+```
+
+Benchmark mode warms up and synchronizes each candidate before comparing
+median execution times. `batch_size` should match the number of vectors the
+application normally evaluates together. If `expected_calls` is supplied, the
+score includes plan setup and JIT compilation as well as repeated execution;
+otherwise it compares steady-state execution only. Results are cached within
+the process for identical configurations, and `cache=False` forces a fresh
+measurement.
+
+Only `"direct"` and `"bluestein"` are candidates. The helper never recommends
+`"fft"`, because selecting an FFT changes the allowable output grid rather than
+only its implementation.
+
 ## One-shot forward transform
 
 ```python

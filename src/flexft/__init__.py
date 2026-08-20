@@ -13,6 +13,7 @@ from .core import (
     IFlexFT2D,
     iflexft2d,
 )
+from .recommend import MethodBenchmark, MethodRecommendation, recommend_method
 
 __all__ = [
     "CenteredDFT",
@@ -28,4 +29,7 @@ __all__ = [
     "flexft2d",
     "IFlexFT2D",
     "iflexft2d",
+    "MethodBenchmark",
+    "MethodRecommendation",
+    "recommend_method",
 ]
