@@ -99,9 +99,9 @@ class FFTFactoryTests(unittest.TestCase):
         k0 = (-0.3, 0.4)
         samples = jnp.arange(shape[0] * shape[1], dtype=float).reshape(shape) + 1j
 
-        forward = FlexFT2D.fft(N=shape, dx=dx, x0=x0, k0=k0)
+        forward = FlexFT2D.fft(Nx=shape, dx=dx, x0=x0, k0=k0)
         direct = FlexFT2D(
-            N=shape,
+            Nx=shape,
             dx=dx,
             dk=dk,
             method="direct",
@@ -110,29 +110,58 @@ class FFTFactoryTests(unittest.TestCase):
         )
         transformed = forward(samples)
 
-        self.assertEqual(forward.M, shape)
+        self.assertEqual(forward.Nk, shape)
         self.assertEqual(forward.method, ("fft", "fft"))
         self.assertTrue(
             jnp.allclose(transformed, direct(samples), rtol=4e-5, atol=4e-5)
         )
 
-        inverse = IFlexFT2D.fft(N=shape, dk=dk, x0=x0, k0=k0)
+        inverse = IFlexFT2D.fft(Nk=shape, dk=dk, x0=x0, k0=k0)
         self.assertTrue(
             jnp.allclose(inverse(transformed), samples, rtol=5e-5, atol=5e-5)
         )
+
+    def test_2d_shape_names_keep_their_domains_in_both_directions(self):
+        Nx = (4, 5)
+        Nk = (2, 3)
+        samples_x = jnp.arange(Nx[0] * Nx[1], dtype=float).reshape(Nx)
+
+        forward = FlexFT2D(
+            Nx=Nx,
+            Nk=Nk,
+            dx=(0.2, 0.3),
+            dk=(0.1, 0.15),
+            method="direct",
+        )
+        samples_k = forward(samples_x)
+
+        inverse = IFlexFT2D(
+            Nk=Nk,
+            Nx=Nx,
+            dk=(0.1, 0.15),
+            dx=(0.2, 0.3),
+            method="direct",
+        )
+
+        self.assertEqual(forward.Nx, Nx)
+        self.assertEqual(forward.Nk, Nk)
+        self.assertEqual(samples_k.shape, Nk)
+        self.assertEqual(inverse.Nx, Nx)
+        self.assertEqual(inverse.Nk, Nk)
+        self.assertEqual(inverse(samples_k).shape, Nx)
 
     def test_old_fft_constructor_paths_give_factory_guidance(self):
         calls = (
             lambda: FlexFT(N=8, dx=0.1, dk=None, method="fft"),
             lambda: IFlexFT(N=8, dk=1.0, dx=None, method="fft"),
             lambda: FlexFT2D(
-                N=(8, 8),
+                Nx=(8, 8),
                 dx=(0.1, 0.1),
                 dk=(0.2, None),
                 method=("direct", "fft"),
             ),
             lambda: IFlexFT2D(
-                N=(8, 8),
+                Nk=(8, 8),
                 dk=(1.0, 1.0),
                 dx=(0.1, None),
                 method=("direct", "fft"),

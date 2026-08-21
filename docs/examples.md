@@ -174,15 +174,15 @@ F2 = flexft2d(f2, dx=dx2, dk=dk2)
 f2_inverse_approximation = iflexft2d(F2, dk=dk2, dx=dx2)
 ```
 
-An axis-specific output shape and method pair can reduce one axis directly
-before evaluating the remaining flexible transform:
+An axis-specific reciprocal-space shape and method pair can reduce one axis
+directly before evaluating the remaining flexible transform:
 
 ```python
 from flexft import FlexFT2D
 
 slice_transform = FlexFT2D(
-    N=shape,
-    M=(1, shape[1]),
+    Nx=shape,
+    Nk=(1, shape[1]),
     dx=dx2,
     dk=dk2,
     method=("direct", "bluestein"),
@@ -205,7 +205,7 @@ ordinary 2D FFT and derive both output spacings with the class factory:
 ```python
 from flexft import FlexFT2D
 
-fft_transform_2d = FlexFT2D.fft(N=shape, dx=dx2)
+fft_transform_2d = FlexFT2D.fft(Nx=shape, dx=dx2)
 F2_fft = fft_transform_2d(f2)
 ```
 
@@ -215,7 +215,7 @@ has its own factory:
 ```python
 from flexft import IFlexFT2D
 
-inverse_fft_transform_2d = IFlexFT2D.fft(N=shape, dk=fft_transform_2d.dk)
+inverse_fft_transform_2d = IFlexFT2D.fft(Nk=shape, dk=fft_transform_2d.dk)
 f2_fft_inverse = inverse_fft_transform_2d(F2_fft)
 ```
 

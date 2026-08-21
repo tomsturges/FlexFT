@@ -532,33 +532,33 @@ class FlexFT2D:
 
     ``dx`` contains the direct-space spacings and ``dk`` contains the
     reciprocal-space spacings. Each grid argument may be a scalar, which is
-    applied to both axes, or an axis-specific pair. ``N`` and ``M`` are the
-    input and output shapes. ``method`` may be one method for both axes or an
-    axis-specific pair containing ``"bluestein"`` or ``"direct"``. Use
-    [`FlexFT2D.fft`][flexft.core.FlexFT2D.fft] when both output axes should be
-    derived from an FFT-compatible input grid. The axis with the greater output
-    compression is evaluated first.
+    applied to both axes, or an axis-specific pair. ``Nx`` and ``Nk`` are the
+    direct- and reciprocal-space shapes. ``method`` may be one method for both
+    axes or an axis-specific pair containing ``"bluestein"`` or ``"direct"``. Use
+    [`FlexFT2D.fft`][flexft.core.FlexFT2D.fft] when the reciprocal-space grid
+    should be derived from an FFT-compatible direct-space grid. The axis with
+    the greater output compression is evaluated first.
     """
 
     def __init__(
         self,
         *,
-        N,
+        Nx,
         dx,
         dk,
-        M=None,
+        Nk=None,
         method="bluestein",
         x0=0.0,
         k0=0.0,
     ):
-        self._set_common_parameters(N=N, M=M, dx=dx, x0=x0, k0=k0)
+        self._set_common_parameters(Nx=Nx, Nk=Nk, dx=dx, x0=x0, k0=k0)
         self.dk = _as_pair(dk, name="dk")
         self.method = _as_method_pair(method)
 
         op1, op2 = (
             FlexFT(
-                N=self.N[axis],
-                M=self.M[axis],
+                N=self.Nx[axis],
+                M=self.Nk[axis],
                 dx=self.dx[axis],
                 dk=self.dk[axis],
                 method=self.method[axis],
@@ -570,15 +570,15 @@ class FlexFT2D:
         self._initialize_axis_plans(op1, op2)
 
     @classmethod
-    def fft(cls, *, N, dx, x0=0.0, k0=0.0):
+    def fft(cls, *, Nx, dx, x0=0.0, k0=0.0):
         """Construct a separable 2D FFT on its compatible output grid."""
         transform = cls.__new__(cls)
-        transform._set_common_parameters(N=N, dx=dx, x0=x0, k0=k0)
+        transform._set_common_parameters(Nx=Nx, dx=dx, x0=x0, k0=k0)
         transform.method = ("fft", "fft")
 
         op1, op2 = (
             FlexFT.fft(
-                N=transform.N[axis],
+                N=transform.Nx[axis],
                 dx=transform.dx[axis],
                 x0=transform.x0[axis],
                 k0=transform.k0[axis],
@@ -589,10 +589,10 @@ class FlexFT2D:
         transform._initialize_axis_plans(op1, op2)
         return transform
 
-    def _set_common_parameters(self, *, N, dx, x0, k0, M=None):
+    def _set_common_parameters(self, *, Nx, dx, x0, k0, Nk=None):
         """Store parameters shared by flexible and FFT construction."""
-        self.N = _as_pair(N, name="N")
-        self.M = self.N if M is None else _as_pair(M, name="M")
+        self.Nx = _as_pair(Nx, name="Nx")
+        self.Nk = self.Nx if Nk is None else _as_pair(Nk, name="Nk")
         self.dx = _as_pair(dx, name="dx")
         self.x0 = _as_pair(x0, name="x0")
         self.k0 = _as_pair(k0, name="k0")
@@ -605,24 +605,24 @@ class FlexFT2D:
         self._op1_vm = jax.vmap(self.op1, in_axes=1, out_axes=1)
         self._op2_vm = jax.vmap(self.op2, in_axes=0, out_axes=0)
 
-        if self.M[0] * self.N[1] <= self.M[1] * self.N[0]:
+        if self.Nk[0] * self.Nx[1] <= self.Nk[1] * self.Nx[0]:
             self.axis_order = (0, 1)
         else:
             self.axis_order = (1, 0)
 
     def __call__(self, f):
-        f = _as_matrix(f, shape=self.N, name="f")
+        f = _as_matrix(f, shape=self.Nx, name="f")
         if self.axis_order == (0, 1):
             return self._op2_vm(self._op1_vm(f))
         return self._op1_vm(self._op2_vm(f))
 
 
-def flexft2d(f, *, dx, dk, M=None, method="bluestein", x0=0.0, k0=0.0):
+def flexft2d(f, *, dx, dk, Nk=None, method="bluestein", x0=0.0, k0=0.0):
     """Apply a 2D forward FlexFT without constructing a reusable plan."""
     f = jnp.asarray(f)
     if f.ndim != 2:
         raise ValueError(f"f must be two-dimensional, got shape {tuple(f.shape)}.")
-    return FlexFT2D(N=f.shape, M=M, dx=dx, dk=dk, method=method, x0=x0, k0=k0)(f)
+    return FlexFT2D(Nx=f.shape, Nk=Nk, dx=dx, dk=dk, method=method, x0=x0, k0=k0)(f)
 
 
 class IFlexFT2D:
@@ -630,25 +630,26 @@ class IFlexFT2D:
 
     ``dk`` contains the reciprocal-space spacings and ``dx`` contains the
     direct-space spacings. Each grid argument may be a scalar, which is applied
-    to both axes, or an axis-specific pair. ``N`` and ``M`` are the input and
-    output shapes. Use [`IFlexFT2D.fft`][flexft.core.IFlexFT2D.fft] when both
-    output axes should be derived from an FFT-compatible input grid.
+    to both axes, or an axis-specific pair. ``Nx`` and ``Nk`` are the direct-
+    and reciprocal-space shapes. Use
+    [`IFlexFT2D.fft`][flexft.core.IFlexFT2D.fft] when both direct-space axes
+    should be derived from an FFT-compatible reciprocal-space grid.
     """
 
     def __init__(
         self,
         *,
-        N,
+        Nk,
         dk,
         dx,
-        M=None,
+        Nx=None,
         method="bluestein",
         x0=0.0,
         k0=0.0,
     ):
         forward_like = FlexFT2D(
-            N=N,
-            M=M,
+            Nx=Nk,
+            Nk=Nx,
             dx=dk,
             dk=dx,
             method=method,
@@ -658,10 +659,10 @@ class IFlexFT2D:
         self._initialize_from_forward(forward_like)
 
     @classmethod
-    def fft(cls, *, N, dk, x0=0.0, k0=0.0):
+    def fft(cls, *, Nk, dk, x0=0.0, k0=0.0):
         """Construct a separable 2D inverse FFT on its compatible grid."""
         forward_like = FlexFT2D.fft(
-            N=N,
+            Nx=Nk,
             dx=dk,
             x0=k0,
             k0=x0,
@@ -673,8 +674,8 @@ class IFlexFT2D:
     def _initialize_from_forward(self, forward_like):
         """Initialize from the conjugated forward-transform representation."""
         self.forward_like = forward_like
-        self.N = forward_like.N
-        self.M = forward_like.M
+        self.Nk = forward_like.Nx
+        self.Nx = forward_like.Nk
         self.dk = forward_like.dx
         self.dx = forward_like.dk
         self.x0 = forward_like.k0
@@ -683,13 +684,13 @@ class IFlexFT2D:
         self.axis_order = forward_like.axis_order
 
     def __call__(self, F):
-        F = _as_matrix(F, shape=self.N, name="F")
+        F = _as_matrix(F, shape=self.Nk, name="F")
         return jnp.conj(self.forward_like(jnp.conj(F)))
 
 
-def iflexft2d(F, *, dk, dx, M=None, method="bluestein", x0=0.0, k0=0.0):
+def iflexft2d(F, *, dk, dx, Nx=None, method="bluestein", x0=0.0, k0=0.0):
     """Apply a 2D inverse FlexFT without constructing a reusable plan."""
     F = jnp.asarray(F)
     if F.ndim != 2:
         raise ValueError(f"F must be two-dimensional, got shape {tuple(F.shape)}.")
-    return IFlexFT2D(N=F.shape, M=M, dk=dk, dx=dx, method=method, x0=x0, k0=k0)(F)
+    return IFlexFT2D(Nk=F.shape, Nx=Nx, dk=dk, dx=dx, method=method, x0=x0, k0=k0)(F)
