@@ -551,71 +551,56 @@ class FlexFT2D:
         x0=0.0,
         k0=0.0,
     ):
-        N1, N2 = _as_pair(N, name="N")
-        M1, M2 = (N1, N2) if M is None else _as_pair(M, name="M")
-        dx1, dx2 = _as_pair(dx, name="dx")
-        dk1, dk2 = _as_pair(dk, name="dk")
-        method1, method2 = _as_method_pair(method)
-        x01, x02 = _as_pair(x0, name="x0")
-        k01, k02 = _as_pair(k0, name="k0")
+        self._set_common_parameters(N=N, M=M, dx=dx, x0=x0, k0=k0)
+        self.dk = _as_pair(dk, name="dk")
+        self.method = _as_method_pair(method)
 
-        N_pair = (
-            _validate_positive_int(N1, name="N[0]"),
-            _validate_positive_int(N2, name="N[1]"),
-        )
-        M_pair = (
-            _validate_positive_int(M1, name="M[0]"),
-            _validate_positive_int(M2, name="M[1]"),
-        )
-        methods = (
-            _validate_method(method1, name="method[0]"),
-            _validate_method(method2, name="method[1]"),
-        )
-        op1 = FlexFT(
-            N=N_pair[0],
-            M=M_pair[0],
-            dx=dx1,
-            dk=dk1,
-            method=methods[0],
-            x0=x01,
-            k0=k01,
-        )
-        op2 = FlexFT(
-            N=N_pair[1],
-            M=M_pair[1],
-            dx=dx2,
-            dk=dk2,
-            method=methods[1],
-            x0=x02,
-            k0=k02,
+        op1, op2 = (
+            FlexFT(
+                N=self.N[axis],
+                M=self.M[axis],
+                dx=self.dx[axis],
+                dk=self.dk[axis],
+                method=self.method[axis],
+                x0=self.x0[axis],
+                k0=self.k0[axis],
+            )
+            for axis in range(2)
         )
         self._initialize_axis_plans(op1, op2)
 
     @classmethod
     def fft(cls, *, N, dx, x0=0.0, k0=0.0):
         """Construct a separable 2D FFT on its compatible output grid."""
-        N1, N2 = _as_pair(N, name="N")
-        dx1, dx2 = _as_pair(dx, name="dx")
-        x01, x02 = _as_pair(x0, name="x0")
-        k01, k02 = _as_pair(k0, name="k0")
-        op1 = FlexFT.fft(N=N1, dx=dx1, x0=x01, k0=k01)
-        op2 = FlexFT.fft(N=N2, dx=dx2, x0=x02, k0=k02)
         transform = cls.__new__(cls)
+        transform._set_common_parameters(N=N, dx=dx, x0=x0, k0=k0)
+        transform.method = ("fft", "fft")
+
+        op1, op2 = (
+            FlexFT.fft(
+                N=transform.N[axis],
+                dx=transform.dx[axis],
+                x0=transform.x0[axis],
+                k0=transform.k0[axis],
+            )
+            for axis in range(2)
+        )
+        transform.dk = (op1.dk, op2.dk)
         transform._initialize_axis_plans(op1, op2)
         return transform
+
+    def _set_common_parameters(self, *, N, dx, x0, k0, M=None):
+        """Store parameters shared by flexible and FFT construction."""
+        self.N = _as_pair(N, name="N")
+        self.M = self.N if M is None else _as_pair(M, name="M")
+        self.dx = _as_pair(dx, name="dx")
+        self.x0 = _as_pair(x0, name="x0")
+        self.k0 = _as_pair(k0, name="k0")
 
     def _initialize_axis_plans(self, op1, op2):
         """Initialize the separable operator from two internal axis plans."""
         self.op1 = op1
         self.op2 = op2
-        self.N = (op1.N, op2.N)
-        self.M = (op1.M, op2.M)
-
-        self.dx = (self.op1.dx, self.op2.dx)
-        self.dk = (self.op1.dk, self.op2.dk)
-        self.x0 = (self.op1.x0, self.op2.x0)
-        self.k0 = (self.op1.k0, self.op2.k0)
-        self.method = (self.op1.method, self.op2.method)
 
         self._op1_vm = jax.vmap(self.op1, in_axes=1, out_axes=1)
         self._op2_vm = jax.vmap(self.op2, in_axes=0, out_axes=0)
@@ -661,22 +646,14 @@ class IFlexFT2D:
         x0=0.0,
         k0=0.0,
     ):
-        N_pair = _as_pair(N, name="N")
-        M_pair = N_pair if M is None else _as_pair(M, name="M")
-        dk_pair = _as_pair(dk, name="dk")
-        dx_pair = _as_pair(dx, name="dx")
-        method_pair = _as_method_pair(method)
-        x0_pair = _as_pair(x0, name="x0")
-        k0_pair = _as_pair(k0, name="k0")
-
         forward_like = FlexFT2D(
-            N=N_pair,
-            M=M_pair,
-            dx=dk_pair,
-            dk=dx_pair,
-            method=method_pair,
-            x0=k0_pair,
-            k0=x0_pair,
+            N=N,
+            M=M,
+            dx=dk,
+            dk=dx,
+            method=method,
+            x0=k0,
+            k0=x0,
         )
         self._initialize_from_forward(forward_like)
 
