@@ -1,4 +1,4 @@
-This package evaluates numerical approximations to the continuous Fourier transform (CFT) on uniformally sampled data while allowing the input and output grids to be chosen independently. This is a significant difference from the Fast Fourier Transform (FFT), where the output grid is fixed by the input grid.
+This package evaluates numerical approximations to the continuous Fourier transform (CFT) on uniformly sampled data while allowing the input and output grids to be chosen independently. This is a significant difference from the Fast Fourier Transform (FFT), where the output grid is fixed by the input grid.
 
 ## Usage
 

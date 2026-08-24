@@ -93,7 +93,7 @@ fig.tight_layout()
 fig.savefig("docs/assets/readme-quick-start.png", dpi=200)
 ```
 
-![FlexFT approximation compared with the exact Gaussian transform](https://raw.githubusercontent.com/tomsturges/FlexFT/v0.1.1/docs/assets/readme-quick-start.png)
+![FlexFT approximation compared with the exact Gaussian transform](https://raw.githubusercontent.com/tomsturges/FlexFT/v0.2.0/docs/assets/readme-quick-start.png)
 
 The flexible-grid constructor accepts `method="bluestein"` or
 `method="direct"` and requires an explicit `dk`. For an ordinary FFT, use

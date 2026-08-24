@@ -10,6 +10,8 @@ from flexft import (
     IFlexFT,
     IFlexFT2D,
     flexft,
+    flexft2d,
+    iflexft2d,
 )
 
 
@@ -149,6 +151,37 @@ class FFTFactoryTests(unittest.TestCase):
         self.assertEqual(inverse.Nx, Nx)
         self.assertEqual(inverse.Nk, Nk)
         self.assertEqual(inverse(samples_k).shape, Nx)
+
+        one_shot_k = flexft2d(
+            samples_x,
+            Nk=Nk,
+            dx=(0.2, 0.3),
+            dk=(0.1, 0.15),
+            method="direct",
+        )
+        one_shot_x = iflexft2d(
+            samples_k,
+            Nx=Nx,
+            dk=(0.1, 0.15),
+            dx=(0.2, 0.3),
+            method="direct",
+        )
+        self.assertTrue(jnp.allclose(one_shot_k, samples_k))
+        self.assertTrue(jnp.allclose(one_shot_x, inverse(samples_k)))
+
+    def test_2d_signatures_name_shapes_by_domain(self):
+        expected_parameters = {
+            FlexFT2D: {"Nx", "Nk", "dx", "dk", "method", "x0", "k0"},
+            FlexFT2D.fft: {"Nx", "dx", "x0", "k0"},
+            IFlexFT2D: {"Nk", "Nx", "dk", "dx", "method", "x0", "k0"},
+            IFlexFT2D.fft: {"Nk", "dk", "x0", "k0"},
+            flexft2d: {"f", "Nk", "dx", "dk", "method", "x0", "k0"},
+            iflexft2d: {"F", "Nx", "dk", "dx", "method", "x0", "k0"},
+        }
+
+        for callable_, expected in expected_parameters.items():
+            with self.subTest(callable=callable_):
+                self.assertEqual(set(inspect.signature(callable_).parameters), expected)
 
     def test_old_fft_constructor_paths_give_factory_guidance(self):
         calls = (

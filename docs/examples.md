@@ -159,6 +159,10 @@ k = k0 + (jnp.arange(N) - N // 2) * dk
 
 ## Two-dimensional transforms
 
+The 2D API names shapes by their physical domain: `Nx` is always the
+direct-space shape and `Nk` is always the reciprocal-space shape. A forward
+plan maps `Nx` to `Nk`, while an inverse plan maps `Nk` to `Nx`.
+
 ```python
 from flexft import flexft2d, iflexft2d
 
