@@ -69,19 +69,20 @@ The quick-start plot below also uses Matplotlib.
 ```python
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
-from flexft import FlexFT, flexft
+from flexft import FlexFT
 
 N = 512
 dx = 0.04
 dk = 0.01
 
-x = (jnp.arange(N) - N // 2) * dx
-k = (jnp.arange(N) - N // 2) * dk
+transform = FlexFT(N=N, dx=dx, dk=dk)
+x = transform.x
+k = transform.k
 
 # With the convention F(k) = integral f(x) exp(-i 2 pi k x) dx,
 # exp(-pi x^2) is its own continuous Fourier transform.
 f = jnp.exp(-jnp.pi * x**2)
-F_flexft = flexft(f, dx=dx, dk=dk)
+F_flexft = transform(f)
 F_exact = jnp.exp(-jnp.pi * k**2)
 
 fig, ax = plt.subplots(figsize=(6, 3.5))

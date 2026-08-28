@@ -16,6 +16,97 @@ from flexft import (
 
 
 class FFTFactoryTests(unittest.TestCase):
+    def test_forward_plan_exposes_its_physical_grids(self):
+        transform = FlexFT(
+            N=5,
+            M=4,
+            dx=0.2,
+            dk=0.3,
+            x0=1.0,
+            k0=-0.5,
+        )
+
+        self.assertTrue(
+            jnp.allclose(transform.x, jnp.array([0.6, 0.8, 1.0, 1.2, 1.4]))
+        )
+        self.assertTrue(
+            jnp.allclose(transform.k, jnp.array([-1.1, -0.8, -0.5, -0.2]))
+        )
+
+    def test_shifted_plan_matches_sum_on_absolute_coordinates(self):
+        samples = jnp.array([1.0 + 0.2j, -0.4j, 0.3 - 0.7j, 1.2j, -0.8])
+        arguments = dict(
+            N=5,
+            M=4,
+            dx=0.17,
+            dk=0.11,
+            x0=0.37,
+            k0=-0.23,
+        )
+
+        for method in ("direct", "bluestein"):
+            with self.subTest(method=method):
+                transform = FlexFT(**arguments, method=method)
+                kernel = jnp.exp(-2j * jnp.pi * jnp.outer(transform.k, transform.x))
+                expected = transform.dx * kernel @ samples
+
+                self.assertTrue(
+                    jnp.allclose(
+                        transform(samples), expected, rtol=2e-5, atol=2e-5
+                    )
+                )
+
+    def test_inverse_plan_grids_keep_domain_names(self):
+        transform = IFlexFT(
+            N=4,
+            M=5,
+            dk=0.3,
+            dx=0.2,
+            x0=1.0,
+            k0=-0.5,
+        )
+
+        self.assertEqual(transform.x.shape, (5,))
+        self.assertEqual(transform.k.shape, (4,))
+        self.assertTrue(
+            jnp.allclose(transform.x, jnp.array([0.6, 0.8, 1.0, 1.2, 1.4]))
+        )
+        self.assertTrue(
+            jnp.allclose(transform.k, jnp.array([-1.1, -0.8, -0.5, -0.2]))
+        )
+
+    def test_2d_plans_expose_axis_coordinate_vectors(self):
+        forward = FlexFT2D(
+            Nx=(3, 4),
+            Nk=(2, 5),
+            dx=(0.2, 0.4),
+            dk=(0.5, 0.25),
+            x0=(1.0, -1.0),
+            k0=(0.5, 2.0),
+        )
+        inverse = IFlexFT2D(
+            Nk=(2, 5),
+            Nx=(3, 4),
+            dk=(0.5, 0.25),
+            dx=(0.2, 0.4),
+            x0=(1.0, -1.0),
+            k0=(0.5, 2.0),
+        )
+
+        for plan in (forward, inverse):
+            self.assertEqual(tuple(axis.shape for axis in plan.x), ((3,), (4,)))
+            self.assertEqual(tuple(axis.shape for axis in plan.k), ((2,), (5,)))
+            self.assertTrue(jnp.allclose(plan.x[0], jnp.array([0.8, 1.0, 1.2])))
+            self.assertTrue(
+                jnp.allclose(plan.x[1], jnp.array([-1.8, -1.4, -1.0, -0.6]))
+            )
+            self.assertTrue(jnp.allclose(plan.k[0], jnp.array([0.0, 0.5])))
+            self.assertTrue(
+                jnp.allclose(
+                    plan.k[1], jnp.array([1.5, 1.75, 2.0, 2.25, 2.5])
+                )
+            )
+
     def test_flexible_constructor_keeps_direct_and_bluestein_equivalent(self):
         N, M = 11, 3
         samples = jnp.arange(N) + 1j * jnp.arange(N)[::-1]
@@ -50,6 +141,18 @@ class FFTFactoryTests(unittest.TestCase):
         self.assertEqual(transform.k0, -0.4)
         self.assertEqual(transform.method, "fft")
         self.assertIsInstance(transform.core, CenteredDFT)
+        self.assertTrue(
+            jnp.allclose(
+                transform.x,
+                0.3 + (jnp.arange(8) - 4) * 0.25,
+            )
+        )
+        self.assertTrue(
+            jnp.allclose(
+                transform.k,
+                -0.4 + (jnp.arange(8) - 4) * 0.5,
+            )
+        )
 
     def test_fft_matches_direct_sum_on_derived_grid_with_shifted_centres(self):
         for N in (7, 8):

@@ -116,9 +116,15 @@ the same grids.
 from flexft import FlexFT
 
 transform = FlexFT(N=N, M=32, dx=dx, dk=dk, method="direct")
+x = transform.x
+k = transform.k
 F1 = transform(f)
 F2 = transform(2 * f)
 ```
+
+Reusable plans expose their direct- and reciprocal-space coordinate vectors as
+`transform.x` and `transform.k`. These include the configured grid centres and,
+for FFT plans, the derived compatible spacing.
 
 ## Inverse transform
 
@@ -210,8 +216,13 @@ ordinary 2D FFT and derive both output spacings with the class factory:
 from flexft import FlexFT2D
 
 fft_transform_2d = FlexFT2D.fft(Nx=shape, dx=dx2)
+x1, x2 = fft_transform_2d.x
+k1, k2 = fft_transform_2d.k
 F2_fft = fft_transform_2d(f2)
 ```
+
+For 2D plans, `x` and `k` are tuples containing one coordinate vector per
+array axis. They do not allocate full meshgrids.
 
 The inverse 2D flexible methods require both spacings. The ordinary inverse FFT
 has its own factory:

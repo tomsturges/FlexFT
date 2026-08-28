@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- Expose direct- and reciprocal-space coordinate vectors as the `x` and `k`
+  attributes of reusable one- and two-dimensional plans.
+
 ## 0.2.0 - 2026-08-24
 
 ### Breaking changes

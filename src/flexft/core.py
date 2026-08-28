@@ -51,6 +51,11 @@ def _complex_dtype():
     return jnp.complex128 if jax.config.x64_enabled else jnp.complex64
 
 
+def _real_dtype():
+    """Use the real precision selected by the user's JAX configuration."""
+    return jnp.float64 if jax.config.x64_enabled else jnp.float32
+
+
 def _unit_phase(cycles: Any):
     """Evaluate exp(i 2 pi cycles) accurately before conversion to JAX.
 
@@ -409,10 +414,16 @@ class FlexFT:
 
         n = np.arange(self.N, dtype=np.float64)
         m = np.arange(self.M, dtype=np.float64)
-        x = (n - self.N // 2) * self.dx
-        k = (m - self.M // 2) * self.dk
-        self.pre = 1.0 if self.k0 == 0 else _unit_phase(-self.k0 * x)
-        self.post = 1.0 if self.x0 == 0 else _unit_phase(-self.x0 * (k + self.k0))
+        x_offsets = (n - self.N // 2) * self.dx
+        k_offsets = (m - self.M // 2) * self.dk
+        self.x = jnp.asarray(self.x0 + x_offsets, dtype=_real_dtype())
+        self.k = jnp.asarray(self.k0 + k_offsets, dtype=_real_dtype())
+        self.pre = 1.0 if self.k0 == 0 else _unit_phase(-self.k0 * x_offsets)
+        self.post = (
+            1.0
+            if self.x0 == 0
+            else _unit_phase(-self.x0 * (k_offsets + self.k0))
+        )
 
     def __call__(self, f):
         """Transform samples ``f`` with shape ``(N,)``."""
@@ -512,6 +523,8 @@ class IFlexFT:
         self.x0 = forward_like.k0
         self.k0 = forward_like.x0
         self.method = forward_like.method
+        self.x = forward_like.k
+        self.k = forward_like.x
 
     def __call__(self, F):
         """Inverse-transform samples ``F`` with shape ``(N,)``."""
@@ -601,6 +614,8 @@ class FlexFT2D:
         """Initialize the separable operator from two internal axis plans."""
         self.op1 = op1
         self.op2 = op2
+        self.x = (op1.x, op2.x)
+        self.k = (op1.k, op2.k)
 
         self._op1_vm = jax.vmap(self.op1, in_axes=1, out_axes=1)
         self._op2_vm = jax.vmap(self.op2, in_axes=0, out_axes=0)
@@ -682,6 +697,8 @@ class IFlexFT2D:
         self.k0 = forward_like.x0
         self.method = forward_like.method
         self.axis_order = forward_like.axis_order
+        self.x = forward_like.k
+        self.k = forward_like.x
 
     def __call__(self, F):
         F = _as_matrix(F, shape=self.Nk, name="F")
